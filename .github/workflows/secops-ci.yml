@@ -1,9 +1,7 @@
-name: Marley DevSecOps CI
+name: Marley DevSecOps CI/CD
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
     branches: [ "main" ]
 
 jobs:
@@ -15,6 +13,24 @@ jobs:
 
       - name: Validation de la syntaxe Docker Compose
         run: |
-          # On force docker compose à valider spécifiquement notre fichier fraîchement ajouté
           docker compose -f docker-compose.yml config > /dev/null
           echo "✅ La syntaxe du fichier docker-compose.yml est valide !"
+
+  deploy-to-vps:
+    runs-on: ubuntu-latest
+    needs: validate-infrastructure # Ce job ne se lance QUE si la validation de la CI est au vert
+    steps:
+      - name: Configuration de la clé SSH et connexion
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: "152.228.217.120"
+          username: "debian"
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22222 # Ton port SSH durci
+          script: |
+            cd ~/devsecops-lab
+            echo "🔄 Récupération de la dernière version du code..."
+            git pull origin main
+            echo "🐳 Redémarrage de la stack Docker Compose durcie..."
+            docker compose up -d
+            echo "🚀 Déploiement en production terminé avec succès !"
