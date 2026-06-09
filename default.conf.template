@@ -1,0 +1,44 @@
+# Redirection automatique du HTTP (port 8080 interne) vers HTTPS
+server {
+    listen 8080;
+    server_name traefik.152.228.217.120.sslip.io;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Serveur HTTPS Sécurisé (port 8443 interne)
+server {
+    listen 8443 ssl;
+    server_name traefik.152.228.217.120.sslip.io;
+
+    ssl_certificate /etc/letsencrypt/live/traefik.152.228.217.120.sslip.io/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/traefik.152.228.217.120.sslip.io/privkey.pem;
+
+    # Protocoles TLS durcis
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # =========================================================
+    # 🛡️ DURCISSEMENT SECOPS : HTTP SECURITY HEADERS (PHASE 6)
+    # =========================================================
+    add_header X-Frame-Options "DENY" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Content-Security-Policy "default-src 'self';" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    location / {
+        proxy_pass http://marley_app:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

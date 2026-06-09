@@ -15,5 +15,6 @@ jobs:
 
       - name: Validation de la syntaxe Docker Compose
         run: |
-          docker compose config > /dev/null
+          # On force docker compose à valider spécifiquement notre fichier fraîchement ajouté
+          docker compose -f docker-compose.yml config > /dev/null
           echo "✅ La syntaxe du fichier docker-compose.yml est valide !"

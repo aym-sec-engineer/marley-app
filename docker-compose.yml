@@ -1,0 +1,61 @@
+services:
+  marley_app:
+    image: httpd:alpine
+    container_name: marley_app
+    # On force Apache à placer son PID dans /tmp/httpd.pid pour contourner le Permission Denied
+    command: httpd-foreground -C "PidFile /tmp/httpd.pid"
+    user: "www-data:www-data"
+    networks:
+      - frontend
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  marley_proxy:
+    image: owasp/modsecurity-crs:nginx
+    container_name: marley_proxy
+    ports:
+      - "80:8080"
+      - "443:8443"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    volumes:
+      - ./default.conf.template:/etc/nginx/templates/conf.d/default.conf.template:ro
+      - certbot_etc:/etc/letsencrypt:ro
+      - certbot_var:/var/www/certbot:ro
+    networks:
+      - frontend
+    depends_on:
+      - marley_app
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    deploy:
+      resources:
+        limits:
+          cpus: '0.20'
+          memory: 128M
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  certbot_etc:
+  certbot_var:
