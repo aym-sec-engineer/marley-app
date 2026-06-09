@@ -1,3 +1,4 @@
+
 # Redirection automatique du HTTP (port 8080 interne) vers HTTPS
 server {
     listen 8080;
@@ -29,6 +30,7 @@ server {
     # 🛡️ DURCISSEMENT SECOPS : HTTP SECURITY HEADERS (PHASE 6)
     # =========================================================
     add_header X-Frame-Options "DENY" always;
+    add_header X-Shipped-By "GitHub-Actions-CD" always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Content-Security-Policy "default-src 'self';" always;
