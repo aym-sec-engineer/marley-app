@@ -1,0 +1,22 @@
+---
+- name: Paquets de base
+  ansible.builtin.apt:
+    name:
+      - curl
+      - git
+      - jq
+      - ufw
+      - fail2ban
+      - apache2-utils      # htpasswd
+      - unattended-upgrades
+      - ca-certificates
+    state: present
+    update_cache: true
+
+- name: Activer les mises à jour de sécurité automatiques
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    mode: "0644"

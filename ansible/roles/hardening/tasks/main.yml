@@ -1,0 +1,48 @@
+---
+- name: Durcissement réseau via sysctl
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop:
+    - { name: net.ipv4.conf.all.rp_filter, value: "1" }
+    - { name: net.ipv4.conf.all.accept_redirects, value: "0" }
+    - { name: net.ipv4.conf.all.send_redirects, value: "0" }
+    - { name: net.ipv4.conf.all.accept_source_route, value: "0" }
+    - { name: net.ipv4.tcp_syncookies, value: "1" }
+    - { name: net.ipv4.icmp_echo_ignore_broadcasts, value: "1" }
+    - { name: kernel.randomize_va_space, value: "2" }
+
+- name: Configurer la jail fail2ban pour SSH
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.local
+    mode: "0644"
+    content: |
+      [DEFAULT]
+      bantime  = {{ fail2ban_bantime }}
+      maxretry = {{ fail2ban_maxretry }}
+      backend  = systemd
+
+      [sshd]
+      enabled = true
+      port    = {{ ssh_port }}
+  notify: Restart fail2ban
+
+# --- Durcissement SSH : OPTIONNEL (harden_ssh=true), pour éviter le lockout ---
+- name: Durcissement SSH (optionnel)
+  when: harden_ssh | bool
+  block:
+    - name: Appliquer la config SSH durcie
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/99-hardening.conf
+        mode: "0644"
+        content: |
+          PermitRootLogin {{ harden_ssh_permit_root }}
+          PasswordAuthentication {{ 'no' if not harden_ssh_password_auth else 'yes' }}
+          X11Forwarding no
+          MaxAuthTries 3
+          ClientAliveInterval 300
+          ClientAliveCountMax 2
+      notify: Restart ssh

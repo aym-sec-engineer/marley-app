@@ -1,0 +1,9 @@
+---
+- name: Provision du host DevSecOps lab
+  hosts: all
+  become: true
+  roles:
+    - common      # paquets de base, mises à jour automatiques
+    - hardening   # sysctl, fail2ban, (SSH optionnel)
+    - firewall    # ufw deny-by-default + 22/80/443
+    - docker      # service docker + réseaux partagés

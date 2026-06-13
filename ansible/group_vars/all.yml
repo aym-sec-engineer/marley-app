@@ -1,0 +1,20 @@
+---
+# Domaine du lab (doit correspondre à .env / LAB_DOMAIN)
+lab_domain: lab.example.com
+
+# Ports autorisés en entrée par le firewall
+ssh_port: 22
+firewall_allowed_tcp:
+  - "{{ ssh_port }}"
+  - 80
+  - 443
+
+# Durcissement SSH — DÉSACTIVÉ par défaut pour éviter tout lockout.
+# Active-le SEULEMENT une fois ta clé publique SSH en place et testée.
+harden_ssh: false
+harden_ssh_permit_root: "prohibit-password"   # ou "no"
+harden_ssh_password_auth: false               # appliqué uniquement si harden_ssh=true
+
+# fail2ban
+fail2ban_bantime: 1h
+fail2ban_maxretry: 5

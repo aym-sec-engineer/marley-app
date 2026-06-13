@@ -1,0 +1,17 @@
+---
+- name: S'assurer que le service Docker tourne
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Réseau Docker public 'web' (exposé via Traefik)
+  community.docker.docker_network:
+    name: web
+    state: present
+
+- name: Réseau Docker 'internal' isolé (cibles vulnérables, jamais exposées)
+  community.docker.docker_network:
+    name: internal
+    internal: true
+    state: present

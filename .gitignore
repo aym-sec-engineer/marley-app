@@ -1,0 +1,11 @@
+.env
+.env.save
+*.env
+!.env.example
+*.tgz
+*.bak
+crowdsec-firewall-bouncer-v0.0.34/
+ansible/.retry
+**/acme.json
+**/data/
+**/volumes/

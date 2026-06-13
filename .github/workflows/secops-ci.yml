@@ -26,7 +26,7 @@ jobs:
           host: "152.228.217.120"
           username: "debian"
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22 # Ton port SSH durci
+          port: ${{ secrets.SSH_PORT }} # Ton port SSH durci
           script: |
             cd ~/devsecops-lab
             echo "🔄 Récupération de la dernière version du code..."
