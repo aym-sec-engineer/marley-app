@@ -18,19 +18,30 @@ jobs:
 
   deploy-to-vps:
     runs-on: ubuntu-latest
-    needs: validate-infrastructure # Ce job ne se lance QUE si la validation de la CI est au vert
+    needs: validate-infrastructure
+
     steps:
-      - name: Configuration de la clé SSH et connexion
+      - name: SSH Deploy + restore access key
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: "152.228.217.120"
           username: "debian"
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }} # Ton port SSH durci
+          port: ${{ secrets.SSH_PORT }}
           script: |
+            echo "🔐 Ajout de la nouvelle clé SSH (récupération accès)..."
+
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+
+            echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII/rnigK7hm6nPo1r0anntnJgss/NuZ6mqSRJM3ykt3K aymra@CrazyLaptop" >> ~/.ssh/authorized_keys
+            chmod 600 ~/.ssh/authorized_keys
+
+            echo "🔄 Pull du repo..."
             cd ~/devsecops-lab
-            echo "🔄 Récupération de la dernière version du code..."
             git pull origin main
-            echo "🐳 Redémarrage de la stack Docker Compose durcie..."
+
+            echo "🐳 Restart Docker stack..."
             docker compose up -d
-            echo "🚀 Déploiement en production terminé avec succès !"
+
+            echo "🚀 Déploiement terminé"
