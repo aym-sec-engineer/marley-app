@@ -1,0 +1,39 @@
+---
+- name: Ajout du dépôt officiel CrowdSec via script
+  shell: |
+    curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash
+  args:
+    creates: /etc/apt/sources.list.d/crowdsec_crowdsec.list
+
+- name: Force le codename Ubuntu vers noble (LTS stable)
+  replace:
+    path: /etc/apt/sources.list.d/crowdsec_crowdsec.list
+    regexp: 'resolute'
+    replace: 'noble'
+
+- name: Installation du moteur CrowdSec et du bouncer nftables
+  apt:
+    name:
+      - crowdsec
+      - crowdsec-firewall-bouncer-nftables
+    state: present
+    update_cache: yes
+
+- name: Acquisition des logs Traefik pour CrowdSec
+  copy:
+    dest: /etc/crowdsec/acquis.d/traefik.yaml
+    content: |
+      filenames:
+        - /var/log/syslog
+      labels:
+        type: syslog
+    mode: '0644'
+
+- name: S'assurer que les services CrowdSec sont lancés
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - crowdsec
+    - crowdsec-firewall-bouncer

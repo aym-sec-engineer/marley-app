@@ -2,15 +2,10 @@
 - name: Orchestration de l'infrastructure Marley VPS
   hosts: vps
   become: yes
-  handlers:
-    - name: Restart SSH
-      service: 
-        name: ssh
-        state: restarted
-
   roles:
     - common
     - hardening
     - firewall
     - docker
     - traefik
+    - crowdsec
