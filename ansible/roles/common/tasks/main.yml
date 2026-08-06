@@ -1,22 +1,18 @@
 ---
-- name: Paquets de base
-  ansible.builtin.apt:
+- name: Mise à jour du cache apt
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Installation des outils de base
+  apt:
     name:
       - curl
+      - wget
       - git
-      - jq
+      - htop
       - ufw
-      - fail2ban
-      - apache2-utils      # htpasswd
-      - unattended-upgrades
       - ca-certificates
+      - gnupg
+      - lsb-release
     state: present
-    update_cache: true
-
-- name: Activer les mises à jour de sécurité automatiques
-  ansible.builtin.copy:
-    dest: /etc/apt/apt.conf.d/20auto-upgrades
-    content: |
-      APT::Periodic::Update-Package-Lists "1";
-      APT::Periodic::Unattended-Upgrade "1";
-    mode: "0644"

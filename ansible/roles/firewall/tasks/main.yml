@@ -1,27 +1,29 @@
 ---
-# IMPORTANT : on autorise SSH AVANT d'activer le firewall (anti-lockout).
-- name: Autoriser SSH en premier
-  community.general.ufw:
+- name: Politique UFW par défaut (Deny Incoming)
+  ufw:
+    direction: incoming
+    default: deny
+
+- name: Politique UFW par défaut (Allow Outgoing)
+  ufw:
+    direction: outgoing
+    default: allow
+
+- name: Autoriser le port SSH sécurisé 22222
+  ufw:
     rule: allow
     port: '22222'
     proto: tcp
 
-- name: Politique par défaut — deny en entrée, allow en sortie
-  community.general.ufw:
-    direction: "{{ item.direction }}"
-    policy: "{{ item.policy }}"
-  loop:
-    - { direction: incoming, policy: deny }
-    - { direction: outgoing, policy: allow }
-
-- name: Autoriser les ports publics (HTTP/HTTPS)
-  community.general.ufw:
+- name: Autoriser HTTP et HTTPS
+  ufw:
     rule: allow
     port: "{{ item }}"
     proto: tcp
-  loop: "{{ firewall_allowed_tcp }}"
+  loop:
+    - '80'
+    - '443'
 
-- name: Activer ufw avec logging
-  community.general.ufw:
+- name: Activer UFW
+  ufw:
     state: enabled
-    logging: "on"

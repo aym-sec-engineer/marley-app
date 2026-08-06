@@ -1,0 +1,28 @@
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - DOCKER_API_VERSION=1.44
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/traefik.yml:ro
+      - ./acme.json:/acme.json
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - 'traefik.http.routers.dashboard.rule=Host("traefik.137.74.163.44.sslip.io")'
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+
+networks:
+  web:
+    external: true

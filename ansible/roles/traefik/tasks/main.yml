@@ -1,0 +1,34 @@
+---
+- name: Création du réseau Docker 'web'
+  community.docker.docker_network:
+    name: web
+    state: present
+
+- name: Création du dossier /opt/marley/traefik sur le VPS
+  file:
+    path: /opt/marley/traefik
+    state: directory
+    mode: '0755'
+
+- name: Création du fichier acme.json avec permissions strictes (0600) s'il n'existe pas
+  copy:
+    content: ""
+    dest: /opt/marley/traefik/acme.json
+    force: no
+    mode: '0600'
+
+- name: Copie de la configuration Traefik
+  copy:
+    src: "{{ item }}"
+    dest: "/opt/marley/traefik/{{ item }}"
+    mode: '0644'
+  loop:
+    - traefik.yml
+    - docker-compose.yml
+  register: traefik_config
+
+- name: Déploiement du conteneur Traefik
+  community.docker.docker_compose_v2:
+    project_src: /opt/marley/traefik
+    state: present
+    recreate: always
