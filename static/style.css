@@ -1,0 +1,168 @@
+/*
+ * MARLEY SECURITY DASHBOARD — style.css
+ * Complément au Tailwind Play CDN : uniquement ce qu'on ne peut pas
+ * exprimer avec des classes utilitaires (animations, scrollbars, etc.)
+ * Les styles critiques sont inlinés dans <style> du HTML pour un
+ * rendu sans FOUC — ce fichier est chargé en différé.
+ */
+
+/* ── Reset minimal ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ── Sélection de texte ─────────────────────────────────────────── */
+::selection {
+  background: rgba(34, 211, 238, 0.18);
+  color: #e2e8f0;
+}
+
+/* ── Focus visible accessible ───────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Smooth scroll ──────────────────────────────────────────────── */
+html { scroll-behavior: smooth; }
+
+/* ── Body baseline ──────────────────────────────────────────────── */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* ── Scanline overlay subtil (ambiance terminal) ────────────────── */
+body::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.018) 2px,
+    rgba(0, 0, 0, 0.018) 4px
+  );
+}
+
+/* ── Glow cyan sur les cartes au hover ──────────────────────────── */
+.kpi-card:hover {
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.08) inset,
+    0 4px 24px rgba(34, 211, 238, 0.05);
+}
+
+/* ── Badge utilitaires (sévérité) ───────────────────────────────── */
+.badge-high {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  padding: 1px 8px;
+  border-radius: 9999px;
+}
+.badge-warn {
+  background: rgba(251, 146, 60, 0.12);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.25);
+  padding: 1px 8px;
+  border-radius: 9999px;
+}
+.badge-info {
+  background: rgba(56, 189, 248, 0.10);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 1px 8px;
+  border-radius: 9999px;
+}
+
+/* ── Status pill states ─────────────────────────────────────────── */
+.pill-secure {
+  background: rgba(34, 197, 94, 0.10);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.30);
+}
+.pill-secure .status-pulse   { background-color: #4ade80; }
+
+.pill-elevated {
+  background: rgba(251, 146, 60, 0.12);
+  color: #fb923c;
+  border-color: rgba(251, 146, 60, 0.35);
+}
+.pill-elevated .status-pulse  { background-color: #fb923c; }
+
+.pill-alert {
+  background: rgba(248, 113, 113, 0.14);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.40);
+}
+.pill-alert .status-pulse     { background-color: #f87171; }
+
+/* ── Skeleton shimmer ───────────────────────────────────────────── */
+@keyframes shimmer {
+  to { background-position: 200% center; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(22, 29, 46, 0.80) 25%,
+    rgba(40, 55, 80, 0.55) 50%,
+    rgba(22, 29, 46, 0.80) 75%
+  );
+  background-size: 200% auto;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 0.5rem;
+  display: block;
+}
+
+/* ── Pulse dot ──────────────────────────────────────────────────── */
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.45; transform: scale(0.82); }
+}
+.status-pulse {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: #64748b;
+  animation: status-pulse 2.4s ease-in-out infinite;
+}
+
+/* ── Bar fill animation ─────────────────────────────────────────── */
+@keyframes bar-fill {
+  from { width: 0 !important; }
+}
+.bar-fill {
+  animation: bar-fill 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.14);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.28);
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Chart.js canvas ────────────────────────────────────────────── */
+canvas { display: block; }
+
+/* ── Responsive tweaks ──────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .kpi-card { padding: 1rem; }
+}

@@ -1,0 +1,68 @@
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    command:
+      - "--api.insecure=false"
+      - "--log.level=DEBUG"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=aym-sec-engineer@proton.me"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - web
+    restart: unless-stopped
+
+  marley-waf:
+    image: owasp/modsecurity-crs:nginx-alpine
+    container_name: marley-waf
+    environment:
+      - BACKEND=http://marley_app:5000
+      - PROXY=1
+      - PORT=8080
+      - MODSEC_RULE_ENGINE=On
+      - PARANOIA=1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.waf.rule=Host(`137.74.163.44.sslip.io`)"
+      - "traefik.http.routers.waf.entrypoints=websecure"
+      - "traefik.http.routers.waf.tls.certresolver=letsencrypt"
+      - "traefik.http.services.waf.loadbalancer.server.port=8080"
+      - "traefik.docker.network=web"
+    networks:
+      - web
+      - backend
+    depends_on:
+      - marley_app
+    restart: unless-stopped
+
+  marley_app:
+    build: .
+    container_name: marley_app
+    restart: unless-stopped
+    networks:
+      - backend
+    expose:
+      - "5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - APP_NAME=MarleyDashboard
+      - APP_VERSION=1.0.0
+
+networks:
+  web:
+    external: true
+  backend:
+    internal: true

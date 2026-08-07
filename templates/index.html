@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <title>Marley Security Dashboard · v2.0.0</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322d3ee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/%3E%3C/svg%3E" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'cyber-bg': '#06080f',
+            'cyber-surface': '#0d1220',
+            'cyber-surface-2': '#161d2e',
+            'cyber-border': 'rgba(148, 163, 184, 0.08)',
+            'cyber-border-strong': 'rgba(148, 163, 184, 0.16)',
+          },
+          fontFamily: {
+            display: ['"Space Grotesk"', 'sans-serif'],
+            sans: ['Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <style>
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.15); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.28); }
+
+    /* ── Pulse for status dot ── */
+    @keyframes status-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+    .status-pulse { animation: status-pulse 2.4s ease-in-out infinite; }
+
+    /* ── KPI card hover ── */
+    .kpi-card { transition: border-color 0.2s, box-shadow 0.2s; }
+    .kpi-card:hover { border-color: rgba(148,163,184,0.22); box-shadow: 0 0 0 1px rgba(34,211,238,0.06) inset; }
+
+    /* ── Glow for severity ── */
+    .sev-high  { color: #f87171; }
+    .sev-warn  { color: #fb923c; }
+    .sev-info  { color: #38bdf8; }
+    .badge-high { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+    .badge-warn { background: rgba(251,146,60,0.12);  color: #fb923c; border: 1px solid rgba(251,146,60,0.25); }
+    .badge-info { background: rgba(56,189,248,0.10);  color: #38bdf8; border: 1px solid rgba(56,189,248,0.25); }
+
+    /* ── Global SECURE / ELEVATED / ALERT status pill ── */
+    .pill-secure   { background: rgba(34,197,94,0.10);  color: #4ade80; border-color: rgba(34,197,94,0.30); }
+    .pill-secure   .status-pulse { background: #4ade80; }
+    .pill-elevated { background: rgba(251,146,60,0.12); color: #fb923c; border-color: rgba(251,146,60,0.35); }
+    .pill-elevated .status-pulse { background: #fb923c; }
+    .pill-alert    { background: rgba(248,113,113,0.14);color: #f87171; border-color: rgba(248,113,113,0.40); }
+    .pill-alert    .status-pulse { background: #f87171; }
+
+    /* ── Bar fill animate ── */
+    @keyframes bar-fill { from { width: 0; } }
+    .bar-fill { animation: bar-fill 0.7s cubic-bezier(.4,0,.2,1) both; }
+
+    /* ── Skeleton shimmer ── */
+    @keyframes shimmer { to { background-position: 200% center; } }
+    .skeleton {
+      background: linear-gradient(90deg, rgba(30,40,60,0.7) 25%, rgba(50,65,90,0.5) 50%, rgba(30,40,60,0.7) 75%);
+      background-size: 200% auto;
+      animation: shimmer 1.6s linear infinite;
+      border-radius: 0.5rem;
+    }
+  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body class="bg-cyber-bg text-slate-200 font-sans antialiased min-h-screen">
+  <div class="flex min-h-screen">
+
+    <!-- ════════ SIDEBAR ════════ -->
+    <aside class="w-[72px] lg:w-64 flex-shrink-0 border-r border-cyber-border bg-cyber-surface/70 backdrop-blur-sm flex flex-col">
+
+      <div class="h-16 flex items-center gap-3 px-4 lg:px-6 border-b border-cyber-border">
+        <div class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="shield-check" class="w-5 h-5 text-cyan-400"></i>
+        </div>
+        <div class="hidden lg:block leading-tight">
+          <p class="font-display font-semibold text-sm text-slate-100 tracking-wide">MARLEY</p>
+          <p class="text-[10px] uppercase tracking-[0.2em] text-slate-500">DevSecOps Lab</p>
+        </div>
+      </div>
+
+      <nav class="flex-1 px-2 lg:px-3 py-5 space-y-1">
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+          <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="hidden lg:inline">Overview</span>
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+          <i data-lucide="activity" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="hidden lg:inline">Security Events</span>
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+          <i data-lucide="box" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="hidden lg:inline">Conteneurs</span>
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+          <i data-lucide="network" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="hidden lg:inline">Réseau</span>
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+          <i data-lucide="file-check" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="hidden lg:inline">Compliance</span>
+        </a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+          <i data-lucide="settings" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="hidden lg:inline">Paramètres</span>
+        </a>
+      </nav>
+
+      <div class="p-3 lg:p-4 border-t border-cyber-border space-y-3">
+        <div class="hidden lg:flex items-center justify-between text-[10px] font-mono text-slate-500">
+          <span class="px-2 py-0.5 rounded-md bg-cyber-surface-2 border border-cyber-border">PRODUCTION</span>
+          <span>v2.0.0</span>
+        </div>
+        <div class="flex items-center gap-2.5 px-2 py-2 rounded-xl bg-cyber-surface-2 border border-cyber-border">
+          <div class="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-[11px] font-display font-semibold text-violet-300 flex-shrink-0">AY</div>
+          <div class="hidden lg:block leading-tight">
+            <p class="text-xs font-medium text-slate-200">Aym</p>
+            <p class="text-[10px] text-slate-500">Security Engineer</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ════════ MAIN ════════ -->
+    <div class="flex-1 flex flex-col min-w-0">
+
+      <!-- HEADER -->
+      <header class="h-16 border-b border-cyber-border bg-cyber-surface/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-8 sticky top-0 z-10">
+        <div>
+          <h1 class="font-display font-semibold text-lg text-slate-100">Vue d'ensemble</h1>
+          <p id="last-sync" class="text-xs text-slate-500 font-mono mt-0.5">Synchronisation…</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="clock" class="hidden sm:inline font-mono text-xs text-slate-500"></span>
+          <div id="status-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-medium bg-cyber-surface-2 text-slate-400 border-cyber-border">
+            <span class="w-2 h-2 rounded-full bg-slate-500 status-pulse"></span>
+            <span id="status-label">CHARGEMENT</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <main class="flex-1 p-4 lg:p-8 space-y-6 lg:space-y-8 overflow-auto">
+
+        <!-- KPI GRID -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+          <!-- KPI: IPs bloquées -->
+          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">IPs bloquées</span>
+              <div class="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                <i data-lucide="shield-ban" class="w-4 h-4 text-red-400"></i>
+              </div>
+            </div>
+            <p id="kpi-blocked" class="font-display text-3xl font-bold text-slate-100">—</p>
+            <p class="text-xs text-slate-500 mt-1 font-mono">CrowdSec actif</p>
+          </div>
+
+          <!-- KPI: CPU -->
+          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">CPU Hôte</span>
+              <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i>
+              </div>
+            </div>
+            <p id="kpi-cpu" class="font-display text-3xl font-bold text-slate-100">—</p>
+            <div class="mt-2 h-1.5 rounded-full bg-cyber-surface-2 overflow-hidden">
+              <div id="bar-cpu" class="h-full rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 bar-fill" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- KPI: RAM -->
+          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">RAM Hôte</span>
+              <div class="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                <i data-lucide="memory-stick" class="w-4 h-4 text-violet-400"></i>
+              </div>
+            </div>
+            <p id="kpi-mem" class="font-display text-3xl font-bold text-slate-100">—</p>
+            <div class="mt-2 h-1.5 rounded-full bg-cyber-surface-2 overflow-hidden">
+              <div id="bar-mem" class="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400 bar-fill" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- KPI: Uptime -->
+          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">Uptime</span>
+              <div class="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                <i data-lucide="timer" class="w-4 h-4 text-green-400"></i>
+              </div>
+            </div>
+            <p id="kpi-uptime" class="font-display text-3xl font-bold text-slate-100">—</p>
+            <p class="text-xs text-slate-500 mt-1 font-mono">dernière reboot</p>
+          </div>
+
+        </section>
+
+        <!-- MIDDLE ROW: Pare-feu + WAF + CrowdSec -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+          <!-- Pare-feu -->
+          <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                <i data-lucide="flame" class="w-4 h-4 text-cyan-400"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-100">Pare-feu</p>
+                <p id="fw-engine" class="text-[10px] font-mono text-slate-500">nftables</p>
+              </div>
+              <span class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-green-500/10 text-green-400 border border-green-500/20">ACTIVE</span>
+            </div>
+            <ul id="fw-ports" class="space-y-2">
+              <li class="skeleton h-7 w-full"></li>
+              <li class="skeleton h-7 w-full"></li>
+              <li class="skeleton h-7 w-full"></li>
+            </ul>
+          </div>
+
+          <!-- WAF -->
+          <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+                <i data-lucide="layers" class="w-4 h-4 text-orange-400"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-100">WAF</p>
+                <p id="waf-engine" class="text-[10px] font-mono text-slate-500">ModSecurity</p>
+              </div>
+              <span id="waf-mode-badge" class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">BLOCKING</span>
+            </div>
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400">Moteur</span>
+                <span id="waf-engine-val" class="font-mono text-slate-200">—</span>
+              </div>
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400">Ruleset</span>
+                <span id="waf-ruleset" class="font-mono text-slate-200">—</span>
+              </div>
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400">Mode</span>
+                <span id="waf-mode" class="font-mono text-slate-200">—</span>
+              </div>
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400">Statut</span>
+                <span class="font-mono text-green-400">active</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CrowdSec -->
+          <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                <i data-lucide="shield-alert" class="w-4 h-4 text-red-400"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-100">CrowdSec</p>
+                <p id="crowdsec-source" class="text-[10px] font-mono text-slate-500">IDS / IPS collaboratif</p>
+              </div>
+              <span class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-green-500/10 text-green-400 border border-green-500/20">ACTIVE</span>
+            </div>
+            <div class="flex items-end gap-4">
+              <div>
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Décisions actives</p>
+                <p id="cs-blocked-big" class="font-display text-4xl font-bold text-red-400">—</p>
+              </div>
+              <div class="mb-1 text-xs text-slate-400">IPs banniesBan</div>
+            </div>
+            <p id="cs-source-label" class="text-[10px] font-mono text-slate-500">source: —</p>
+          </div>
+
+        </section>
+
+        <!-- CHART -->
+        <section class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 lg:p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div>
+              <h2 class="text-sm font-semibold text-slate-100">Tentatives bloquées — 24 h</h2>
+              <p class="text-[11px] text-slate-500 mt-0.5">CrowdSec (L3/L4) vs WAF ModSecurity (L7)</p>
+            </div>
+            <div class="flex items-center gap-4 text-[11px] font-mono">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-cyan-400 inline-block"></span><span class="text-slate-400">CrowdSec</span><strong id="total-cs" class="text-slate-200 ml-1">—</strong></span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-orange-400 inline-block"></span><span class="text-slate-400">WAF</span><strong id="total-waf" class="text-slate-200 ml-1">—</strong></span>
+            </div>
+          </div>
+          <div class="relative h-52 lg:h-64">
+            <canvas id="timeline-chart"></canvas>
+          </div>
+        </section>
+
+        <!-- BOTTOM ROW: Events + Containers -->
+        <section class="grid grid-cols-1 xl:grid-cols-5 gap-4">
+
+          <!-- Security Events (3/5) -->
+          <div class="xl:col-span-3 bg-cyber-surface border border-cyber-border rounded-2xl flex flex-col">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-cyber-border">
+              <h2 class="text-sm font-semibold text-slate-100">Live Security Logs</h2>
+              <span id="events-count" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyber-surface-2 border border-cyber-border text-slate-400">— events</span>
+            </div>
+            <div class="overflow-auto flex-1 max-h-[480px]">
+              <table class="w-full text-xs">
+                <thead class="sticky top-0 z-10 bg-cyber-surface/95 backdrop-blur-sm">
+                  <tr class="text-[10px] uppercase tracking-widest text-slate-500 border-b border-cyber-border">
+                    <th class="px-5 py-3 text-left font-medium">Sévérité</th>
+                    <th class="px-5 py-3 text-left font-medium hidden sm:table-cell">IP Source</th>
+                    <th class="px-5 py-3 text-left font-medium">Type</th>
+                    <th class="px-5 py-3 text-left font-medium hidden lg:table-cell">Message</th>
+                    <th class="px-5 py-3 text-left font-medium hidden xl:table-cell">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="events-tbody" class="divide-y divide-cyber-border">
+                  <tr><td colspan="5" class="px-5 py-8 text-center text-slate-500 font-mono text-xs">Chargement des événements…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Containers (2/5) -->
+          <div class="xl:col-span-2 bg-cyber-surface border border-cyber-border rounded-2xl flex flex-col">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-cyber-border">
+              <h2 class="text-sm font-semibold text-slate-100">Conteneurs</h2>
+              <span id="containers-source" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyber-surface-2 border border-cyber-border text-slate-400">—</span>
+            </div>
+            <div id="containers-list" class="flex-1 overflow-auto max-h-[480px] divide-y divide-cyber-border">
+              <div class="px-5 py-8 text-center text-slate-500 font-mono text-xs">Chargement…</div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="text-center text-[10px] font-mono text-slate-600 pb-4">
+          Marley Security Dashboard v2.0.0 · DevSecOps Lab · Aym
+        </footer>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ════════ JAVASCRIPT ════════ -->
+  <script>
+  (function () {
+    'use strict';
+
+    // ── Horloge ──────────────────────────────────────────────────
+    const clockEl = document.getElementById('clock');
+    function tickClock() {
+      clockEl.textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function fmt_uptime(seconds) {
+      const d = Math.floor(seconds / 86400);
+      const h = Math.floor((seconds % 86400) / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      if (d > 0) return `${d}j ${h}h`;
+      if (h > 0) return `${h}h ${m}m`;
+      return `${m}m`;
+    }
+
+    function sev_badge(sev) {
+      if (sev === 'high')    return '<span class="badge-high px-2 py-0.5 rounded-full text-[10px] font-mono font-medium">HIGH</span>';
+      if (sev === 'warning') return '<span class="badge-warn px-2 py-0.5 rounded-full text-[10px] font-mono font-medium">WARN</span>';
+      return '<span class="badge-info px-2 py-0.5 rounded-full text-[10px] font-mono font-medium">INFO</span>';
+    }
+
+    function cpu_color(pct) {
+      if (pct >= 80) return 'text-red-400';
+      if (pct >= 55) return 'text-orange-400';
+      return 'text-green-400';
+    }
+
+    // ── Chart.js setup ───────────────────────────────────────────
+    const ctx = document.getElementById('timeline-chart').getContext('2d');
+    let timelineChart = null;
+
+    function build_chart(data) {
+      const cfg = {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'CrowdSec',
+              data: data.datasets.crowdsec,
+              borderColor: 'rgba(34,211,238,0.85)',
+              backgroundColor: 'rgba(34,211,238,0.06)',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.4,
+              fill: true,
+            },
+            {
+              label: 'WAF',
+              data: data.datasets.waf,
+              borderColor: 'rgba(251,146,60,0.85)',
+              backgroundColor: 'rgba(251,146,60,0.06)',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.4,
+              fill: true,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#161d2e',
+              borderColor: 'rgba(148,163,184,0.12)',
+              borderWidth: 1,
+              titleColor: '#94a3b8',
+              bodyColor: '#e2e8f0',
+              titleFont: { family: 'JetBrains Mono', size: 10 },
+              bodyFont: { family: 'JetBrains Mono', size: 11 },
+              padding: 10,
+            },
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: '#475569',
+                font: { family: 'JetBrains Mono', size: 9 },
+                maxTicksLimit: 12,
+                maxRotation: 0,
+              },
+              grid: { color: 'rgba(148,163,184,0.06)' },
+              border: { color: 'rgba(148,163,184,0.08)' },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: '#475569',
+                font: { family: 'JetBrains Mono', size: 9 },
+                precision: 0,
+              },
+              grid: { color: 'rgba(148,163,184,0.06)' },
+              border: { color: 'rgba(148,163,184,0.08)' },
+            },
+          },
+        },
+      };
+
+      if (timelineChart) {
+        timelineChart.data = cfg.data;
+        timelineChart.update('none');
+      } else {
+        timelineChart = new Chart(ctx, cfg);
+      }
+    }
+
+    // ── Status pill ───────────────────────────────────────────────
+    function update_status_pill(status) {
+      const pill = document.getElementById('status-pill');
+      const lbl  = document.getElementById('status-label');
+      pill.className = 'flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-medium ';
+      if (status === 'SECURE')   { pill.className += 'pill-secure'; }
+      else if (status === 'ELEVATED') { pill.className += 'pill-elevated'; }
+      else                        { pill.className += 'pill-alert'; }
+      lbl.textContent = status;
+    }
+
+    // ── Render: /api/v1/status ────────────────────────────────────
+    function render_status(d) {
+      update_status_pill(d.global_status || 'SECURE');
+
+      // KPI: blocked
+      const blocked = d.crowdsec?.blocked_ips_count ?? 0;
+      document.getElementById('kpi-blocked').textContent = blocked;
+      document.getElementById('cs-blocked-big').textContent = blocked;
+      document.getElementById('cs-source-label').textContent = `source: ${d.crowdsec?.data_source ?? '—'}`;
+      document.getElementById('crowdsec-source').textContent = d.crowdsec?.data_source === 'live' ? '🟢 live' : '🟡 simulated';
+
+      // KPI: CPU
+      const cpu = d.host?.cpu_percent ?? 0;
+      document.getElementById('kpi-cpu').textContent = `${cpu}%`;
+      document.getElementById('bar-cpu').style.width = `${Math.min(cpu, 100)}%`;
+
+      // KPI: RAM
+      const mem = d.host?.mem_percent ?? 0;
+      document.getElementById('kpi-mem').textContent = `${mem}%`;
+      document.getElementById('bar-mem').style.width = `${Math.min(mem, 100)}%`;
+
+      // KPI: Uptime
+      document.getElementById('kpi-uptime').textContent = fmt_uptime(d.host?.uptime_seconds ?? 0);
+
+      // Firewall
+      const ports = d.firewall?.open_ports ?? [];
+      document.getElementById('fw-engine').textContent = d.firewall?.engine ?? 'nftables';
+      document.getElementById('fw-ports').innerHTML = ports.map(p => `
+        <li class="flex items-center justify-between px-3 py-2 rounded-xl bg-cyber-surface-2 border border-cyber-border">
+          <span class="font-mono text-[11px] text-cyan-300">:${p.port}</span>
+          <span class="text-[11px] text-slate-300">${p.service}</span>
+          <span class="text-[10px] text-slate-500 hidden sm:inline truncate max-w-[100px]">${p.auth}</span>
+        </li>
+      `).join('') || '<li class="text-xs text-slate-500 px-3 py-2">Aucun port trouvé</li>';
+
+      // WAF
+      document.getElementById('waf-engine').textContent    = d.waf?.engine ?? '—';
+      document.getElementById('waf-engine-val').textContent = d.waf?.engine ?? '—';
+      document.getElementById('waf-ruleset').textContent    = d.waf?.ruleset ?? '—';
+      document.getElementById('waf-mode').textContent       = d.waf?.mode ?? '—';
+      document.getElementById('waf-mode-badge').textContent = (d.waf?.mode ?? 'BLOCKING').toUpperCase();
+
+      // Last sync
+      const now = new Date();
+      document.getElementById('last-sync').textContent =
+        `Dernière sync : ${now.toLocaleTimeString('fr-FR')}`;
+    }
+
+    // ── Render: /api/v1/events ────────────────────────────────────
+    function render_events(d) {
+      const events = d.events ?? [];
+      document.getElementById('events-count').textContent = `${events.length} events`;
+
+      if (!events.length) {
+        document.getElementById('events-tbody').innerHTML =
+          '<tr><td colspan="5" class="px-5 py-8 text-center text-slate-500 font-mono text-xs">Aucun événement</td></tr>';
+        return;
+      }
+
+      document.getElementById('events-tbody').innerHTML = events.map(ev => {
+        const ts = new Date(ev.timestamp);
+        const time_str = ts.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        return `
+          <tr class="hover:bg-cyber-surface-2/50 transition-colors">
+            <td class="px-5 py-2.5 whitespace-nowrap">${sev_badge(ev.severity)}</td>
+            <td class="px-5 py-2.5 hidden sm:table-cell font-mono text-[10px] text-slate-400 whitespace-nowrap">${ev.source_ip || '—'}</td>
+            <td class="px-5 py-2.5 whitespace-nowrap">
+              <span class="font-medium text-slate-200 text-[11px]">${ev.event_type || '—'}</span>
+              <span class="block font-mono text-[9px] text-slate-600">${time_str}</span>
+            </td>
+            <td class="px-5 py-2.5 hidden lg:table-cell text-slate-400 text-[11px] max-w-[200px] truncate">${ev.message || '—'}</td>
+            <td class="px-5 py-2.5 hidden xl:table-cell font-mono text-[10px] text-slate-500 whitespace-nowrap">${ev.action || '—'}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    // ── Render: /api/v1/containers ────────────────────────────────
+    function render_containers(d) {
+      const containers = d.containers ?? [];
+      document.getElementById('containers-source').textContent =
+        d.data_source === 'live' ? '🟢 live' : '🟡 simulated';
+
+      if (!containers.length) {
+        document.getElementById('containers-list').innerHTML =
+          '<div class="px-5 py-8 text-center text-slate-500 font-mono text-xs">Aucun conteneur</div>';
+        return;
+      }
+
+      document.getElementById('containers-list').innerHTML = containers.map(c => {
+        const cpu_cls = cpu_color(c.cpu_percent);
+        const cpuW = Math.min(c.cpu_percent, 100).toFixed(0);
+        const memW = Math.min(c.mem_percent, 100).toFixed(0);
+        return `
+          <div class="px-5 py-3.5 hover:bg-cyber-surface-2/50 transition-colors">
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-slate-200 font-mono truncate">${c.name}</p>
+                <p class="text-[10px] text-slate-500 truncate">${c.role}</p>
+              </div>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-mono flex-shrink-0 ${
+                c.status === 'running'
+                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+              }">${c.status}</span>
+            </div>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 text-[10px]">
+                <span class="text-slate-500 w-8">CPU</span>
+                <div class="flex-1 h-1 rounded-full bg-cyber-bg overflow-hidden">
+                  <div class="h-full rounded-full bg-cyan-500 bar-fill" style="width:${cpuW}%"></div>
+                </div>
+                <span class="${cpu_cls} font-mono w-10 text-right">${c.cpu_percent}%</span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px]">
+                <span class="text-slate-500 w-8">RAM</span>
+                <div class="flex-1 h-1 rounded-full bg-cyber-bg overflow-hidden">
+                  <div class="h-full rounded-full bg-violet-500 bar-fill" style="width:${memW}%"></div>
+                </div>
+                <span class="text-slate-400 font-mono w-10 text-right">${c.mem_usage_mb}M</span>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // ── Render: /api/v1/timeline ──────────────────────────────────
+    function render_timeline(d) {
+      build_chart(d);
+      document.getElementById('total-cs').textContent  = d.totals?.crowdsec ?? 0;
+      document.getElementById('total-waf').textContent = d.totals?.waf ?? 0;
+    }
+
+    // ── Fetch all endpoints ───────────────────────────────────────
+    async function fetch_all() {
+      try {
+        const [status, events, containers, timeline] = await Promise.all([
+          fetch('/api/v1/status').then(r => r.json()),
+          fetch('/api/v1/events?limit=30').then(r => r.json()),
+          fetch('/api/v1/containers').then(r => r.json()),
+          fetch('/api/v1/timeline?hours=24').then(r => r.json()),
+        ]);
+        render_status(status);
+        render_events(events);
+        render_containers(containers);
+        render_timeline(timeline);
+      } catch (err) {
+        console.error('[Marley] Fetch error:', err);
+        document.getElementById('last-sync').textContent = 'Erreur de synchronisation';
+      }
+    }
+
+    // ── Init & polling (30s) ──────────────────────────────────────
+    lucide.createIcons();
+    fetch_all();
+    setInterval(fetch_all, 30_000);
+
+  }());
+  </script>
+</body>
+</html>
