@@ -52,7 +52,7 @@ services:
     restart: unless-stopped
 
   marley_app:
-    image: cyberaym/marley-test:latest
+    image: cyberaym/marley-test:v1.0
     container_name: marley_app
     restart: unless-stopped
     networks:
@@ -84,7 +84,7 @@ services:
       - "9100"
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
     container_name: cadvisor
     restart: unless-stopped
     privileged: true
