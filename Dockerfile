@@ -5,6 +5,10 @@ WORKDIR /app
 # Installation des dépendances système minimales
 RUN apk add --no-cache gcc libffi-dev musl-dev
 
+# Force la mise à jour pip/setuptools/wheel AVANT d'installer les deps
+# (corrige CVE-2026-23949 et CVE-2026-24049 dans les libs vendorisées de setuptools)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
 # Copie et installation des dépendances Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt gunicorn
