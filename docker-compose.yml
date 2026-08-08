@@ -48,7 +48,7 @@ services:
     restart: unless-stopped
 
   marley_app:
-    build: .
+    image: cyberaym/marley-test:latest
     container_name: marley_app
     restart: unless-stopped
     networks:
