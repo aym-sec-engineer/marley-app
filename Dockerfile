@@ -27,7 +27,7 @@ RUN rm -rf /usr/local/lib/python3.11/site-packages/pip* \
     && find /usr/local/lib/python3.11/site-packages -maxdepth 1 -type d -name "*.dist-info" \
          \( -iname "pip-*" -o -iname "setuptools-*" -o -iname "wheel-*" \) -exec rm -rf {} +
 
-RUN adduser -D marley && chown -R marley:marley /app /home/marley/.local
+RUN addgroup -g 986 dockerhost && adduser -D marley && adduser marley dockerhost && chown -R marley:marley /app /home/marley/.local
 
 USER marley
 ENV PATH=/home/marley/.local/bin:$PATH

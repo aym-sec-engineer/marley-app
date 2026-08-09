@@ -24,6 +24,7 @@ import json
 import os
 import random
 import subprocess
+import requests
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -73,6 +74,9 @@ class Config:
     CSCLI_BIN = os.environ.get("MARLEY_CSCLI_BIN", "cscli")
     CSCLI_TIMEOUT = float(os.environ.get("MARLEY_CSCLI_TIMEOUT", "3"))
     CSCLI_USE_SUDO = os.environ.get("MARLEY_CSCLI_SUDO", "true").lower() == "true"
+    CROWDSEC_LAPI_URL = os.environ.get("CROWDSEC_LAPI_URL", "http://172.19.0.1:8080")
+    CROWDSEC_BOUNCER_KEY = os.environ.get("CROWDSEC_BOUNCER_KEY", "")
+    CROWDSEC_TIMEOUT = float(os.environ.get("CROWDSEC_TIMEOUT", "3"))
 
     # Flask
     DEBUG = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
@@ -233,34 +237,27 @@ def _simulate_crowdsec_decisions(count: int | None = None) -> list[dict]:
 
 
 def get_crowdsec_decisions() -> tuple[list[dict], bool]:
-    """Récupère les décisions actives via `cscli decisions list -o json`.
-
+    """Récupère les décisions actives via le LAPI CrowdSec (HTTP + clé bouncer).
     Retourne (decisions, is_live) :
-      - is_live=True  → données réelles de l'agent CrowdSec
-      - is_live=False → fallback simulé (cscli absent, socket non monté, etc.)
+      - is_live=True  → données réelles du LAPI CrowdSec
+      - is_live=False → fallback simulé (LAPI injoignable, clé absente, etc.)
     """
-
-    cmd = [Config.CSCLI_BIN, "decisions", "list", "-o", "json"]
-    if Config.CSCLI_USE_SUDO:
-        cmd = ["sudo", "-n"] + cmd  # -n : jamais de prompt interactif
-
+    if not Config.CROWDSEC_BOUNCER_KEY:
+        return _simulate_crowdsec_decisions(), False
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=Config.CSCLI_TIMEOUT,
+        resp = requests.get(
+            f"{Config.CROWDSEC_LAPI_URL}/v1/decisions",
+            headers={"X-Api-Key": Config.CROWDSEC_BOUNCER_KEY},
+            timeout=Config.CROWDSEC_TIMEOUT,
         )
-        if result.returncode == 0:
-            stdout = result.stdout.strip()
-            if stdout and stdout != "null":
-                data = json.loads(stdout)
-                if isinstance(data, list):
-                    return data, True
-                return [], True  # cscli a répondu, aucune décision active
-    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError, OSError):
+        if resp.status_code == 200:
+            data = resp.json()
+            if isinstance(data, list):
+                return data, True
+            return [], True  # LAPI a répondu, aucune décision active (null)
+    except (requests.RequestException, json.JSONDecodeError):
         pass
-
+    return _simulate_crowdsec_decisions(), False
     return _simulate_crowdsec_decisions(), False
 
 
@@ -510,7 +507,9 @@ def api_status():
 
     decisions, decisions_live = get_crowdsec_decisions()
     host = get_host_metrics()
-    blocked_count = len(decisions)
+    local_decisions = [d for d in decisions if d.get("origin") != "CAPI"]
+    blocked_count = len(local_decisions)
+    community_blocklist_count = len(decisions) - blocked_count
 
     if blocked_count >= Config.THRESHOLD_ALERT:
         global_status = "ALERT"
@@ -532,6 +531,7 @@ def api_status():
         "crowdsec": {
             "status": "active",
             "blocked_ips_count": blocked_count,
+            "community_blocklist_count": community_blocklist_count,
             "data_source": "live" if decisions_live else "simulated",
         },
         "host": host,

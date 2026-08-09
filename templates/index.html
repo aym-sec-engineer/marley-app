@@ -296,6 +296,7 @@
               <div class="mb-1 text-xs text-slate-400">IPs banniesBan</div>
             </div>
             <p id="cs-source-label" class="text-[10px] font-mono text-slate-500">source: —</p>
+            <p id="cs-community-label" class="text-[10px] font-mono text-slate-600">threat intel communautaire: —</p>
           </div>
 
         </section>
@@ -503,6 +504,7 @@
       document.getElementById('kpi-blocked').textContent = blocked;
       document.getElementById('cs-blocked-big').textContent = blocked;
       document.getElementById('cs-source-label').textContent = `source: ${d.crowdsec?.data_source ?? '—'}`;
+      document.getElementById('cs-community-label').textContent = `threat intel communautaire: ${(d.crowdsec?.community_blocklist_count ?? 0).toLocaleString('fr-FR')} IPs`;
       document.getElementById('crowdsec-source').textContent = d.crowdsec?.data_source === 'live' ? '🟢 live' : '🟡 simulated';
 
       // KPI: CPU
