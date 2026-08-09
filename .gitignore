@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 .venv/
 templates/index.html.stub.bak
+*.bak*
+dast-reports/
