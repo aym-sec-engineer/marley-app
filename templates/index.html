@@ -401,6 +401,10 @@
           </div>
         </section>
 
+        <!-- VUE DÉDIÉE : Réseau (onglet network) -->
+        <section id="section-network" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
+        </section>
+
         <section id="tab-placeholder" class="hidden bg-cyber-surface border border-cyber-border rounded-2xl p-12 text-center">
           <i data-lucide="construction" class="w-10 h-10 text-slate-600 mx-auto mb-4"></i>
           <p class="text-sm font-semibold text-slate-300 mb-1">Section en construction</p>
@@ -747,6 +751,45 @@
       }).join('');
     }
 
+    // ── Render: vue dédiée Réseau (onglet) ──────────────────────────
+    function render_network(d) {
+      const networks = d.networks ?? [];
+      const container = document.getElementById('section-network');
+
+      if (!networks.length) {
+        container.innerHTML = '<div class="col-span-full px-5 py-8 text-center text-slate-500 font-mono text-xs">Aucun réseau trouvé</div>';
+        return;
+      }
+
+      container.innerHTML = networks.map(net => {
+        const badge = net.internal
+          ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">INTERNAL</span>'
+          : '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-green-500/10 text-green-400 border border-green-500/20">EXTERNAL</span>';
+        const containersList = (net.containers ?? []).map(c => `
+          <li class="flex items-center justify-between px-3 py-2 rounded-xl bg-cyber-surface-2 border border-cyber-border">
+            <span class="font-mono text-[11px] text-cyan-300 truncate">${c.name}</span>
+            <span class="font-mono text-[10px] text-slate-500 flex-shrink-0">${c.ipv4}</span>
+          </li>`).join('') || '<li class="text-xs text-slate-500 px-3 py-2">Aucun conteneur</li>';
+
+        return `
+          <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                <i data-lucide="network" class="w-4 h-4 text-cyan-400"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-slate-100 font-mono truncate">${net.name}</p>
+                <p class="text-[10px] font-mono text-slate-500">${net.driver} · ${net.subnet}</p>
+              </div>
+              <div class="ml-auto flex-shrink-0">${badge}</div>
+            </div>
+            <ul class="space-y-2">${containersList}</ul>
+          </div>`;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
     // ── Render: /api/v1/timeline ──────────────────────────────────
     function render_timeline(d) {
       build_chart(d);
@@ -757,10 +800,11 @@
     // ── Fetch all endpoints ───────────────────────────────────────
     async function fetch_all() {
       try {
-        const [status, events, containers, timeline] = await Promise.all([
+        const [status, events, containers, network, timeline] = await Promise.all([
           fetch('/api/v1/status').then(r => r.json()),
           fetch('/api/v1/events?limit=30').then(r => r.json()),
           fetch('/api/v1/containers').then(r => r.json()),
+          fetch('/api/v1/network').then(r => r.json()),
           fetch('/api/v1/timeline?hours=24').then(r => r.json()),
         ]);
         render_status(status);
@@ -768,6 +812,7 @@
         render_events_full(events);
         render_containers(containers);
         render_containers_full(containers);
+        render_network(network);
         render_timeline(timeline);
       } catch (err) {
         console.error('[Marley] Fetch error:', err);
@@ -783,19 +828,20 @@
     const placeholder = document.getElementById('tab-placeholder');
 
     function switch_tab(tab) {
-      const dedicatedIds = ['tab-placeholder', 'section-events-full', 'section-containers-full'];
+      const dedicatedIds = ['tab-placeholder', 'section-events-full', 'section-containers-full', 'section-network'];
 
       if (tab === 'overview') {
         mainSections.forEach(s => { if (!dedicatedIds.includes(s.id)) s.classList.remove('hidden'); });
-        document.getElementById('tab-placeholder').classList.add('hidden');
-        document.getElementById('section-events-full').classList.add('hidden');
-        document.getElementById('section-containers-full').classList.add('hidden');
+        dedicatedIds.forEach(id => document.getElementById(id).classList.add('hidden'));
       } else if (tab === 'events') {
         mainSections.forEach(s => s.classList.add('hidden'));
         document.getElementById('section-events-full').classList.remove('hidden');
       } else if (tab === 'containers') {
         mainSections.forEach(s => s.classList.add('hidden'));
         document.getElementById('section-containers-full').classList.remove('hidden');
+      } else if (tab === 'network') {
+        mainSections.forEach(s => s.classList.add('hidden'));
+        document.getElementById('section-network').classList.remove('hidden');
       } else {
         mainSections.forEach(s => s.classList.add('hidden'));
         placeholder.classList.remove('hidden');

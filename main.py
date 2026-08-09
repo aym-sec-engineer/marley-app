@@ -450,6 +450,87 @@ def get_container_metrics() -> tuple[list[dict], bool]:
 
 
 # ═══════════════════════════════════════════════════════════════════
+# COLLECTEURS — Réseaux Docker
+# ═══════════════════════════════════════════════════════════════════
+
+def _simulate_docker_networks() -> list[dict]:
+    """Jeu de données simulé — utilisé si le socket Docker n'est pas
+    accessible depuis ce conteneur (choix de durcissement assumé)."""
+
+    return [
+        {
+            "name": "web",
+            "driver": "bridge",
+            "internal": False,
+            "subnet": "172.18.0.0/24",
+            "containers": [
+                {"name": "traefik", "ipv4": "172.18.0.2"},
+                {"name": "marley_proxy", "ipv4": "172.18.0.3"},
+            ],
+        },
+        {
+            "name": "backend",
+            "driver": "bridge",
+            "internal": True,
+            "subnet": "172.19.0.0/24",
+            "containers": [
+                {"name": "marley_proxy", "ipv4": "172.19.0.2"},
+                {"name": "marley_app", "ipv4": "172.19.0.3"},
+            ],
+        },
+        {
+            "name": "monitoring",
+            "driver": "bridge",
+            "internal": True,
+            "subnet": "172.20.0.0/24",
+            "containers": [
+                {"name": "prometheus", "ipv4": "172.20.0.2"},
+                {"name": "grafana", "ipv4": "172.20.0.3"},
+            ],
+        },
+    ]
+
+
+def get_docker_networks() -> tuple[list[dict], bool]:
+    """Inventaire des réseaux Docker et des conteneurs qui y sont
+    rattachés (nom, IP), via le SDK Docker.
+
+    Retourne (networks, is_live)."""
+
+    if DOCKER_AVAILABLE:
+        try:
+            client = docker.from_env()
+            networks = []
+
+            for net in client.networks.list():
+                if net.name in ("none", "host", "bridge"):
+                    continue
+                net.reload()
+                attrs = net.attrs
+                containers_in_net = []
+                for cid, cinfo in (attrs.get("Containers") or {}).items():
+                    containers_in_net.append({
+                        "name": cinfo.get("Name", cid[:12]),
+                        "ipv4": (cinfo.get("IPv4Address") or "").split("/")[0] or "—",
+                    })
+                ipam_config = attrs.get("IPAM", {}).get("Config") or []
+                networks.append({
+                    "name": net.name,
+                    "driver": attrs.get("Driver", "—"),
+                    "internal": attrs.get("Internal", False),
+                    "subnet": ipam_config[0].get("Subnet", "—") if ipam_config else "—",
+                    "containers": containers_in_net,
+                })
+
+            if networks:
+                return networks, True
+        except Exception:
+            pass
+
+    return _simulate_docker_networks(), False
+
+
+# ═══════════════════════════════════════════════════════════════════
 # COLLECTEURS — Série temporelle des attaques (Chart.js)
 # ═══════════════════════════════════════════════════════════════════
 
@@ -566,6 +647,18 @@ def api_containers():
     return jsonify({
         "containers": metrics,
         "count": len(metrics),
+        "data_source": "live" if is_live else "simulated",
+    })
+
+
+@app.route("/api/v1/network")
+def api_network():
+    """Inventaire des réseaux Docker et des conteneurs qui y sont rattachés."""
+
+    networks, is_live = get_docker_networks()
+    return jsonify({
+        "networks": networks,
+        "count": len(networks),
         "data_source": "live" if is_live else "simulated",
     })
 
