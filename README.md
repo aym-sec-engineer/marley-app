@@ -31,15 +31,19 @@ Flask · Docker Compose · GitHub Actions · Trivy · Prometheus · Grafana · O
                 │  Dockerfile multi-stage │  utilisateur non-root
                 └─────────────────────────┘
 
-Réseau "monitoring" (internal)          Réseau "backend" (internal, isolé)
-├── node-exporter (métriques hôte)      └── juice-shop (cible DAST, jamais exposée)
+**Réseau "monitoring" (internal)**          
+├── node-exporter (métriques hôte)      
 ├── cAdvisor (métriques conteneurs)
 ├── Prometheus (scrape 15s)
 └── Grafana (dashboards, exposé via Traefik sur sous-domaine dédié)
 
-Couche réseau système (hôte)
+**Réseau "backend" (internal, isolé)**
+└── juice-shop (cible DAST, jamais exposée)
+
+**Couche réseau système (hôte)**
 ├── CrowdSec + bouncer nftables (L3/L4 — bruteforce SSH, scan agressif)
 └── Ansible (durcissement SSH, sysctl, firewall)
+
 ---
 
 ## ✅ Phases réalisées
