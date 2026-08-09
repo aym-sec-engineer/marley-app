@@ -405,6 +405,65 @@
         <section id="section-network" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
         </section>
 
+        <!-- VUE DÉDIÉE : Compliance (onglet compliance) -->
+        <section id="section-compliance" class="hidden space-y-4">
+
+          <!-- Trivy + ZAP -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            <!-- Trivy -->
+            <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                  <i data-lucide="scan-search" class="w-4 h-4 text-cyan-400"></i>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-slate-100">Trivy — Scan de vulnérabilités</p>
+                  <p id="trivy-target" class="text-[10px] font-mono text-slate-500 truncate">—</p>
+                </div>
+              </div>
+              <div id="trivy-grid" class="grid grid-cols-5 gap-2">
+                <div class="col-span-5 text-xs text-slate-500 text-center py-4">Chargement…</div>
+              </div>
+              <p id="trivy-date" class="text-[10px] font-mono text-slate-600">—</p>
+            </div>
+
+            <!-- ZAP -->
+            <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                  <i data-lucide="bug" class="w-4 h-4 text-violet-400"></i>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-slate-100">OWASP ZAP — Scan DAST</p>
+                  <p id="zap-target" class="text-[10px] font-mono text-slate-500 truncate">—</p>
+                </div>
+              </div>
+              <div id="zap-grid" class="grid grid-cols-3 gap-2">
+                <div class="col-span-3 text-xs text-slate-500 text-center py-4">Chargement…</div>
+              </div>
+              <p id="zap-date" class="text-[10px] font-mono text-slate-600">—</p>
+            </div>
+
+          </div>
+
+          <!-- Headers HTTP -->
+          <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                <i data-lucide="shield-check" class="w-4 h-4 text-green-400"></i>
+              </div>
+              <p class="text-sm font-semibold text-slate-100">En-têtes de sécurité HTTP appliqués</p>
+            </div>
+            <ul id="headers-list" class="space-y-2">
+              <li class="skeleton h-10 w-full"></li>
+              <li class="skeleton h-10 w-full"></li>
+              <li class="skeleton h-10 w-full"></li>
+            </ul>
+          </div>
+
+        </section>
+
         <section id="tab-placeholder" class="hidden bg-cyber-surface border border-cyber-border rounded-2xl p-12 text-center">
           <i data-lucide="construction" class="w-10 h-10 text-slate-600 mx-auto mb-4"></i>
           <p class="text-sm font-semibold text-slate-300 mb-1">Section en construction</p>
@@ -790,6 +849,63 @@
       lucide.createIcons();
     }
 
+    // ── Render: vue dédiée Compliance (onglet) ──────────────────────
+    function render_compliance(d) {
+      const trivy = d.trivy ?? {};
+      const zap = d.zap ?? {};
+      const headers = d.security_headers ?? {};
+
+      // Trivy
+      document.getElementById('trivy-target').textContent = trivy.target || '—';
+      document.getElementById('trivy-date').textContent = trivy.scan_date
+        ? `Dernier scan : ${new Date(trivy.scan_date).toLocaleString('fr-FR')}`
+        : 'Aucun scan enregistré';
+
+      const trivySeverities = [
+        { key: 'critical', label: 'CRITICAL', cls: 'text-red-400 border-red-500/20 bg-red-500/10' },
+        { key: 'high',     label: 'HIGH',     cls: 'text-orange-400 border-orange-500/20 bg-orange-500/10' },
+        { key: 'medium',   label: 'MEDIUM',   cls: 'text-yellow-400 border-yellow-500/20 bg-yellow-500/10' },
+        { key: 'low',      label: 'LOW',      cls: 'text-cyan-400 border-cyan-500/20 bg-cyan-500/10' },
+        { key: 'unknown',  label: 'UNKNOWN',  cls: 'text-slate-400 border-slate-500/20 bg-slate-500/10' },
+      ];
+      document.getElementById('trivy-grid').innerHTML = trivySeverities.map(s => `
+        <div class="rounded-xl border p-3 text-center ${s.cls}">
+          <p class="font-display text-xl font-bold">${trivy[s.key] ?? 0}</p>
+          <p class="text-[9px] font-mono uppercase tracking-widest mt-1 opacity-80">${s.label}</p>
+        </div>
+      `).join('');
+
+      // ZAP
+      document.getElementById('zap-target').textContent = zap.target || '—';
+      document.getElementById('zap-date').textContent = zap.scan_date
+        ? `Dernier scan : ${new Date(zap.scan_date).toLocaleString('fr-FR')}`
+        : 'Aucun scan enregistré';
+
+      const zapMetrics = [
+        { key: 'fail_new', label: 'FAIL-NEW', cls: 'text-red-400 border-red-500/20 bg-red-500/10' },
+        { key: 'warn_new', label: 'WARN-NEW', cls: 'text-orange-400 border-orange-500/20 bg-orange-500/10' },
+        { key: 'pass',     label: 'PASS',     cls: 'text-green-400 border-green-500/20 bg-green-500/10' },
+      ];
+      document.getElementById('zap-grid').innerHTML = zapMetrics.map(m => `
+        <div class="rounded-xl border p-3 text-center ${m.cls}">
+          <p class="font-display text-xl font-bold">${zap[m.key] ?? 0}</p>
+          <p class="text-[9px] font-mono uppercase tracking-widest mt-1 opacity-80">${m.label}</p>
+        </div>
+      `).join('');
+
+      // Headers HTTP
+      const headerEntries = Object.entries(headers);
+      document.getElementById('headers-list').innerHTML = headerEntries.map(([name, value]) => `
+        <li class="px-3 py-2.5 rounded-xl bg-cyber-surface-2 border border-cyber-border">
+          <div class="flex items-center justify-between gap-3 mb-1">
+            <span class="font-mono text-[11px] text-cyan-300">${name}</span>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-green-500/10 text-green-400 border border-green-500/20 flex-shrink-0">APPLIQUÉ</span>
+          </div>
+          <p class="font-mono text-[10px] text-slate-500 break-all">${value}</p>
+        </li>
+      `).join('') || '<li class="text-xs text-slate-500 px-3 py-2">Aucun header trouvé</li>';
+    }
+
     // ── Render: /api/v1/timeline ──────────────────────────────────
     function render_timeline(d) {
       build_chart(d);
@@ -800,11 +916,12 @@
     // ── Fetch all endpoints ───────────────────────────────────────
     async function fetch_all() {
       try {
-        const [status, events, containers, network, timeline] = await Promise.all([
+        const [status, events, containers, network, compliance, timeline] = await Promise.all([
           fetch('/api/v1/status').then(r => r.json()),
           fetch('/api/v1/events?limit=30').then(r => r.json()),
           fetch('/api/v1/containers').then(r => r.json()),
           fetch('/api/v1/network').then(r => r.json()),
+          fetch('/api/v1/compliance').then(r => r.json()),
           fetch('/api/v1/timeline?hours=24').then(r => r.json()),
         ]);
         render_status(status);
@@ -813,6 +930,7 @@
         render_containers(containers);
         render_containers_full(containers);
         render_network(network);
+        render_compliance(compliance);
         render_timeline(timeline);
       } catch (err) {
         console.error('[Marley] Fetch error:', err);
@@ -828,7 +946,7 @@
     const placeholder = document.getElementById('tab-placeholder');
 
     function switch_tab(tab) {
-      const dedicatedIds = ['tab-placeholder', 'section-events-full', 'section-containers-full', 'section-network'];
+      const dedicatedIds = ['tab-placeholder', 'section-events-full', 'section-containers-full', 'section-network', 'section-compliance'];
 
       if (tab === 'overview') {
         mainSections.forEach(s => { if (!dedicatedIds.includes(s.id)) s.classList.remove('hidden'); });
@@ -842,6 +960,10 @@
       } else if (tab === 'network') {
         mainSections.forEach(s => s.classList.add('hidden'));
         document.getElementById('section-network').classList.remove('hidden');
+      } else if (tab === 'compliance') {
+        mainSections.forEach(s => s.classList.add('hidden'));
+        document.getElementById('section-compliance').classList.remove('hidden');
+        lucide.createIcons();
       } else {
         mainSections.forEach(s => s.classList.add('hidden'));
         placeholder.classList.remove('hidden');

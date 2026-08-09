@@ -96,6 +96,36 @@ app.json.sort_keys = False
 # SÉCURITÉ — en-têtes HTTP durcis appliqués à chaque réponse
 # ═══════════════════════════════════════════════════════════════════
 
+def get_security_headers() -> dict:
+    """Retourne le dict des en-têtes de sécurité HTTP appliqués à
+    chaque réponse — source unique de vérité, utilisée à la fois par
+    `apply_security_headers()` (runtime) et par la route
+    `/api/v1/compliance` (affichage dashboard), pour garantir que
+    l'UI reflète toujours exactement ce qui est réellement appliqué."""
+
+    return {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=()",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "Content-Security-Policy": (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' "
+            "https://cdn.tailwindcss.com "
+            "https://cdn.jsdelivr.net "
+            "https://unpkg.com; "
+            "style-src 'self' 'unsafe-inline' "
+            "https://fonts.googleapis.com "
+            "https://cdn.jsdelivr.net; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data:; "
+            "connect-src 'self';"
+        ),
+    }
+
+
 @app.after_request
 def apply_security_headers(response):
     """Applique un set d'en-têtes de sécurité conforme aux
@@ -107,29 +137,8 @@ def apply_security_headers(response):
     production durcie, on bascule sur un build Tailwind/JS local avec
     des nonces CSP par requête."""
 
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = (
-        "geolocation=(), microphone=(), camera=(), payment=()"
-    )
-    response.headers["Strict-Transport-Security"] = (
-        "max-age=31536000; includeSubDomains"
-    )
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' "
-        "https://cdn.tailwindcss.com "
-        "https://cdn.jsdelivr.net "
-        "https://unpkg.com; "
-        "style-src 'self' 'unsafe-inline' "
-        "https://fonts.googleapis.com "
-        "https://cdn.jsdelivr.net; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data:; "
-        "connect-src 'self';"
-    )
+    for header_name, header_value in get_security_headers().items():
+        response.headers[header_name] = header_value
 
     # On masque la signature serveur par défaut de Werkzeug
     response.headers["Server"] = f"{Config.APP_NAME.replace(' ', '-')}/{Config.APP_VERSION}"
@@ -569,6 +578,47 @@ def get_attacks_timeline(hours: int = 24) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════
+# COLLECTEURS — Compliance (Trivy / ZAP)
+# ═══════════════════════════════════════════════════════════════════
+
+COMPLIANCE_FILE_PATH = os.path.join(os.path.dirname(__file__), "compliance", "compliance.json")
+
+
+def get_compliance_scans() -> tuple[dict, bool]:
+    """Lit les résultats des derniers scans Trivy et ZAP depuis un
+    fichier JSON déposé sur le VPS (monté en volume lecture-seule,
+    voir docker-compose.yml : ./compliance:/app/compliance:ro).
+
+    Ce fichier est mis à jour par la CI GitHub Actions ou manuellement
+    sur le VPS — aucun rebuild du conteneur n'est nécessaire pour que
+    le dashboard reflète un nouveau scan.
+
+    Retourne (data, is_live) :
+      - is_live=True  → fichier lu avec succès
+      - is_live=False → fichier absent/invalide, fallback par défaut
+    """
+
+    try:
+        with open(COMPLIANCE_FILE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if "trivy" in data and "zap" in data:
+            return data, True
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+
+    return {
+        "trivy": {
+            "scan_date": None, "target": "—",
+            "critical": 0, "high": 0, "medium": 0, "low": 0, "unknown": 0,
+        },
+        "zap": {
+            "scan_date": None, "target": "—",
+            "fail_new": 0, "warn_new": 0, "pass": 0,
+        },
+    }, False
+
+
+# ═══════════════════════════════════════════════════════════════════
 # ROUTES — Pages
 # ═══════════════════════════════════════════════════════════════════
 
@@ -660,6 +710,20 @@ def api_network():
         "networks": networks,
         "count": len(networks),
         "data_source": "live" if is_live else "simulated",
+    })
+
+
+@app.route("/api/v1/compliance")
+def api_compliance():
+    """Résultats des derniers scans de sécurité (Trivy, ZAP) et liste
+    des en-têtes HTTP de sécurité effectivement appliqués."""
+
+    scans, is_live = get_compliance_scans()
+    return jsonify({
+        "trivy": scans["trivy"],
+        "zap": scans["zap"],
+        "security_headers": get_security_headers(),
+        "data_source": "live" if is_live else "default",
     })
 
 

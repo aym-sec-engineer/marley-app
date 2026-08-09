@@ -62,9 +62,12 @@ services:
       - "5000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./compliance:/app/compliance:ro
     environment:
       - APP_NAME=MarleyDashboard
       - APP_VERSION=1.0.0
+      - CROWDSEC_LAPI_URL=http://172.19.0.1:8080
+      - CROWDSEC_BOUNCER_KEY=${CROWDSEC_BOUNCER_KEY}
 
   node-exporter:
     image: prom/node-exporter:v1.8.2
@@ -144,6 +147,19 @@ services:
       - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
       - "traefik.docker.network=web"
+    
+  juice-shop:
+    image: bkimminich/juice-shop:latest
+    container_name: juice-shop
+    restart: unless-stopped
+    networks:
+      - backend
+    # AUCUN "ports:", AUCUN label traefik — c'est la garantie de non-exposition
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
 networks:
   web:
