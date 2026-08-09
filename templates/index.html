@@ -103,27 +103,27 @@
       </div>
 
       <nav class="flex-1 px-2 lg:px-3 py-5 space-y-1">
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+        <a href="#" data-tab="overview" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
           <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
           <span class="hidden lg:inline">Overview</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+        <a href="#" data-tab="events" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
           <i data-lucide="activity" class="w-4 h-4 flex-shrink-0"></i>
           <span class="hidden lg:inline">Security Events</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+        <a href="#" data-tab="containers" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
           <i data-lucide="box" class="w-4 h-4 flex-shrink-0"></i>
           <span class="hidden lg:inline">Conteneurs</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+        <a href="#" data-tab="network" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
           <i data-lucide="network" class="w-4 h-4 flex-shrink-0"></i>
           <span class="hidden lg:inline">Réseau</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+        <a href="#" data-tab="compliance" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
           <i data-lucide="file-check" class="w-4 h-4 flex-shrink-0"></i>
           <span class="hidden lg:inline">Compliance</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+        <a href="#" data-tab="settings" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
           <i data-lucide="settings" class="w-4 h-4 flex-shrink-0"></i>
           <span class="hidden lg:inline">Paramètres</span>
         </a>
@@ -319,7 +319,7 @@
         </section>
 
         <!-- BOTTOM ROW: Events + Containers -->
-        <section class="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        <section id="section-events-containers" class="grid grid-cols-1 xl:grid-cols-5 gap-4">
 
           <!-- Security Events (3/5) -->
           <div class="xl:col-span-3 bg-cyber-surface border border-cyber-border rounded-2xl flex flex-col">
@@ -356,6 +356,12 @@
             </div>
           </div>
 
+        </section>
+
+        <section id="tab-placeholder" class="hidden bg-cyber-surface border border-cyber-border rounded-2xl p-12 text-center">
+          <i data-lucide="construction" class="w-10 h-10 text-slate-600 mx-auto mb-4"></i>
+          <p class="text-sm font-semibold text-slate-300 mb-1">Section en construction</p>
+          <p class="text-xs text-slate-500">Cette vue sera enrichie dans une prochaine itération du dashboard.</p>
         </section>
 
         <!-- FOOTER -->
@@ -648,6 +654,42 @@
     }
 
     // ── Init & polling (30s) ──────────────────────────────────────
+
+    // ── Navigation par onglets (sidebar) ────────────────────────────
+    const tabLinks = document.querySelectorAll('[data-tab]');
+    const mainSections = document.querySelectorAll('main > section');
+    const placeholder = document.getElementById('tab-placeholder');
+
+    function switch_tab(tab) {
+      if (tab === 'overview') {
+        mainSections.forEach(s => { if (s.id !== 'tab-placeholder') s.classList.remove('hidden'); });
+        placeholder.classList.add('hidden');
+      } else if (tab === 'events' || tab === 'containers') {
+        mainSections.forEach(s => s.classList.add('hidden'));
+        placeholder.classList.add('hidden');
+        document.getElementById('section-events-containers').classList.remove('hidden');
+      } else {
+        mainSections.forEach(s => s.classList.add('hidden'));
+        placeholder.classList.remove('hidden');
+      }
+
+      tabLinks.forEach(l => {
+        const active = l.dataset.tab === tab;
+        l.classList.toggle('bg-cyan-500/10', active);
+        l.classList.toggle('text-cyan-300', active);
+        l.classList.toggle('border', active);
+        l.classList.toggle('border-cyan-500/20', active);
+        l.classList.toggle('text-slate-400', !active);
+      });
+    }
+
+    tabLinks.forEach(l => {
+      l.addEventListener('click', (e) => {
+        e.preventDefault();
+        switch_tab(l.dataset.tab);
+      });
+    });
+
     lucide.createIcons();
     fetch_all();
     setInterval(fetch_all, 30_000);
