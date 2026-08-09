@@ -120,4 +120,4 @@ docker compose up -d
 ## 👤 Auteur
 
 **Aym** — En Mastère Cybersécurité & Réseaux, reconversion vers DevSecOps/Cloud
-Security. CompTIA Security+ en préparation. [LinkedIn] · [GitHub](https://github.com/aym-sec-engineer)
+Security. CompTIA Security+ en préparation. [LinkedIn](https://www.linkedin.com/in/aymrajao/) · [GitHub](https://github.com/aym-sec-engineer)
