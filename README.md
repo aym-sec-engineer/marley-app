@@ -13,7 +13,7 @@ Flask · Docker Compose · GitHub Actions · Trivy · Prometheus · Grafana · O
 ---
 
 ## 📐 Architecture
-Internet
+                         Internet
                              │
                 ┌────────────▼────────────┐
                 │   Traefik v3 (reverse   │  :80 → :443 redirect
