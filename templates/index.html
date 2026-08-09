@@ -464,6 +464,10 @@
 
         </section>
 
+        <!-- VUE DÉDIÉE : Paramètres (onglet settings) -->
+        <section id="section-settings" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
+        </section>
+
         <section id="tab-placeholder" class="hidden bg-cyber-surface border border-cyber-border rounded-2xl p-12 text-center">
           <i data-lucide="construction" class="w-10 h-10 text-slate-600 mx-auto mb-4"></i>
           <p class="text-sm font-semibold text-slate-300 mb-1">Section en construction</p>
@@ -906,6 +910,39 @@
       `).join('') || '<li class="text-xs text-slate-500 px-3 py-2">Aucun header trouvé</li>';
     }
 
+    // ── Render: vue dédiée Paramètres (onglet) ──────────────────────
+    function render_settings(d) {
+      const groups = [
+        { title: 'Application', icon: 'app-window', data: d.app },
+        { title: 'Réseau / Pare-feu', icon: 'flame', data: d.network },
+        { title: 'WAF', icon: 'layers', data: d.waf },
+        { title: 'CrowdSec', icon: 'shield-alert', data: d.crowdsec },
+        { title: 'Seuils de statut global', icon: 'gauge', data: d.thresholds },
+      ];
+
+      const container = document.getElementById('section-settings');
+      container.innerHTML = groups.map(g => {
+        const rows = Object.entries(g.data ?? {}).map(([key, value]) => `
+          <div class="flex items-center justify-between text-xs py-1.5">
+            <span class="text-slate-400 font-mono">${key}</span>
+            <span class="font-mono text-slate-200">${value}</span>
+          </div>
+        `).join('');
+        return `
+          <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-3">
+            <div class="flex items-center gap-2.5 mb-2">
+              <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                <i data-lucide="${g.icon}" class="w-4 h-4 text-cyan-400"></i>
+              </div>
+              <p class="text-sm font-semibold text-slate-100">${g.title}</p>
+            </div>
+            <div class="divide-y divide-cyber-border">${rows}</div>
+          </div>`;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
     // ── Render: /api/v1/timeline ──────────────────────────────────
     function render_timeline(d) {
       build_chart(d);
@@ -916,12 +953,13 @@
     // ── Fetch all endpoints ───────────────────────────────────────
     async function fetch_all() {
       try {
-        const [status, events, containers, network, compliance, timeline] = await Promise.all([
+        const [status, events, containers, network, compliance, settings, timeline] = await Promise.all([
           fetch('/api/v1/status').then(r => r.json()),
           fetch('/api/v1/events?limit=30').then(r => r.json()),
           fetch('/api/v1/containers').then(r => r.json()),
           fetch('/api/v1/network').then(r => r.json()),
           fetch('/api/v1/compliance').then(r => r.json()),
+          fetch('/api/v1/settings').then(r => r.json()),
           fetch('/api/v1/timeline?hours=24').then(r => r.json()),
         ]);
         render_status(status);
@@ -931,6 +969,7 @@
         render_containers_full(containers);
         render_network(network);
         render_compliance(compliance);
+        render_settings(settings);
         render_timeline(timeline);
       } catch (err) {
         console.error('[Marley] Fetch error:', err);
@@ -946,7 +985,7 @@
     const placeholder = document.getElementById('tab-placeholder');
 
     function switch_tab(tab) {
-      const dedicatedIds = ['tab-placeholder', 'section-events-full', 'section-containers-full', 'section-network', 'section-compliance'];
+      const dedicatedIds = ['tab-placeholder', 'section-events-full', 'section-containers-full', 'section-network', 'section-compliance', 'section-settings'];
 
       if (tab === 'overview') {
         mainSections.forEach(s => { if (!dedicatedIds.includes(s.id)) s.classList.remove('hidden'); });
@@ -963,6 +1002,10 @@
       } else if (tab === 'compliance') {
         mainSections.forEach(s => s.classList.add('hidden'));
         document.getElementById('section-compliance').classList.remove('hidden');
+        lucide.createIcons();
+      } else if (tab === 'settings') {
+        mainSections.forEach(s => s.classList.add('hidden'));
+        document.getElementById('section-settings').classList.remove('hidden');
         lucide.createIcons();
       } else {
         mainSections.forEach(s => s.classList.add('hidden'));

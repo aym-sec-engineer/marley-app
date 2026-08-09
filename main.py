@@ -735,6 +735,45 @@ def api_timeline():
     return jsonify(get_attacks_timeline(hours=hours))
 
 
+@app.route("/api/v1/settings")
+def api_settings():
+    """Paramètres de configuration en lecture seule — allowlist
+    explicite : seules les valeurs non-sensibles listées ici sont
+    exposées, jamais SECRET_KEY, CROWDSEC_BOUNCER_KEY ou toute future
+    valeur sensible ajoutée à Config sans mise à jour de cette liste."""
+
+    return jsonify({
+        "app": {
+            "name": Config.APP_NAME,
+            "version": Config.APP_VERSION,
+            "environment": Config.ENVIRONMENT,
+            "debug": Config.DEBUG,
+        },
+        "network": {
+            "ssh_port": Config.SSH_PORT,
+            "http_port": Config.HTTP_PORT,
+            "https_port": Config.HTTPS_PORT,
+            "firewall_engine": Config.FIREWALL_ENGINE,
+            "firewall_policy": Config.FIREWALL_POLICY,
+        },
+        "waf": {
+            "engine": Config.WAF_ENGINE,
+            "ruleset": Config.WAF_RULESET,
+            "mode": Config.WAF_MODE,
+        },
+        "crowdsec": {
+            "cscli_bin": Config.CSCLI_BIN,
+            "cscli_timeout": Config.CSCLI_TIMEOUT,
+            "cscli_use_sudo": Config.CSCLI_USE_SUDO,
+            "timeout": Config.CROWDSEC_TIMEOUT,
+        },
+        "thresholds": {
+            "elevated": Config.THRESHOLD_ELEVATED,
+            "alert": Config.THRESHOLD_ALERT,
+        },
+    })
+
+
 @app.route("/health")
 def health():
     """Endpoint de health check — utilisé par le HEALTHCHECK Docker
