@@ -16,20 +16,20 @@ Flask · Docker Compose · GitHub Actions · Trivy · Prometheus · Grafana · O
 Internet
                              │
                 ┌────────────▼────────────┐
-                │   Traefik v3 (reverse    │  :80 → :443 redirect
-                │   proxy + TLS Let's       │  Let's Encrypt (TLS challenge)
-                │   Encrypt)                │
+                │   Traefik v3 (reverse   │  :80 → :443 redirect
+                │   proxy + TLS Let's     │  Let's Encrypt (TLS challenge)
+                │   Encrypt)              │
                 └────────────┬────────────┘
                              │  réseau "web"
                 ┌────────────▼────────────┐
-                │  ModSecurity WAF          │  OWASP CRS, Paranoia Level 1
-                │  (owasp/modsecurity-crs)  │
+                │  ModSecurity WAF        │  OWASP CRS, Paranoia Level 1
+                │  (owasp/modsecurity-crs)│
                 └────────────┬────────────┘
                              │  réseau "backend" (internal: true)
                 ┌────────────▼────────────┐
-                │  marley_app (Flask)       │  Dashboard sécurité temps réel
-                │  Dockerfile multi-stage   │  utilisateur non-root
-                └───────────────────────────┘
+                │  marley_app (Flask)     │  Dashboard sécurité temps réel
+                │  Dockerfile multi-stage │  utilisateur non-root
+                └─────────────────────────┘
 
 Réseau "monitoring" (internal)          Réseau "backend" (internal, isolé)
 ├── node-exporter (métriques hôte)      └── juice-shop (cible DAST, jamais exposée)
