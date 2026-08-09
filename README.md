@@ -13,34 +13,43 @@ Flask · Docker Compose · GitHub Actions · Trivy · Prometheus · Grafana · O
 ---
 
 ## 📐 Architecture
-Internet
+                         Internet
                              │
                 ┌────────────▼────────────┐
-                │   Traefik v3 (reverse    │  :80 → :443 redirect
-                │   proxy + TLS Let's       │  Let's Encrypt (TLS challenge)
-                │   Encrypt)                │
+                │   Traefik v3 (reverse   │  :80 → :443 redirect
+                │   proxy + TLS Let's     │  Let's Encrypt (TLS challenge)
+                │   Encrypt)              │
                 └────────────┬────────────┘
                              │  réseau "web"
                 ┌────────────▼────────────┐
-                │  ModSecurity WAF          │  OWASP CRS, Paranoia Level 1
-                │  (owasp/modsecurity-crs)  │
+                │  ModSecurity WAF        │  OWASP CRS, Paranoia Level 1
+                │  (owasp/modsecurity-crs)│
                 └────────────┬────────────┘
                              │  réseau "backend" (internal: true)
                 ┌────────────▼────────────┐
-                │  marley_app (Flask)       │  Dashboard sécurité temps réel
-                │  Dockerfile multi-stage   │  utilisateur non-root
-                └───────────────────────────┘
+                │  marley_app (Flask)     │  Dashboard sécurité temps réel
+                │  Dockerfile multi-stage │  utilisateur non-root
+                └─────────────────────────┘
 
-Réseau "monitoring" (internal)          Réseau "backend" (internal, isolé)
-├── node-exporter (métriques hôte)      └── juice-shop (cible DAST, jamais exposée)
+
+**Réseau "monitoring" (internal)**          
+├── node-exporter (métriques hôte)      
 ├── cAdvisor (métriques conteneurs)
 ├── Prometheus (scrape 15s)
 └── Grafana (dashboards, exposé via Traefik sur sous-domaine dédié)
 
-Couche réseau système (hôte)
+
+**Réseau "backend" (internal, isolé)**
+└── juice-shop (cible DAST, jamais exposée)
+
+
+**Couche réseau système (hôte)**
 ├── CrowdSec + bouncer nftables (L3/L4 — bruteforce SSH, scan agressif)
 └── Ansible (durcissement SSH, sysctl, firewall)
+
+
 ---
+
 
 ## ✅ Phases réalisées
 
@@ -120,4 +129,4 @@ docker compose up -d
 ## 👤 Auteur
 
 **Aym** — En Mastère Cybersécurité & Réseaux, reconversion vers DevSecOps/Cloud
-Security. CompTIA Security+ en préparation. [LinkedIn] · [GitHub](https://github.com/aym-sec-engineer)
+Security. CompTIA Security+ en préparation. [LinkedIn](https://www.linkedin.com/in/aymrajao/) · [GitHub](https://github.com/aym-sec-engineer)
