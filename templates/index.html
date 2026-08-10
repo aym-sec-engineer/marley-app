@@ -134,12 +134,16 @@
           <span class="px-2 py-0.5 rounded-md bg-cyber-surface-2 border border-cyber-border">PRODUCTION</span>
           <span>v2.0.0</span>
         </div>
-        <div class="flex items-center gap-2.5 px-2 py-2 rounded-xl bg-cyber-surface-2 border border-cyber-border">
-          <div class="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-[11px] font-display font-semibold text-violet-300 flex-shrink-0">AY</div>
-          <div class="hidden lg:block leading-tight">
+        <div id="profile-card-trigger" class="relative flex items-center gap-2.5 px-2 py-2 rounded-xl bg-cyber-surface-2 border border-cyber-border cursor-pointer hover:border-cyan-500/30 hover:bg-cyber-surface transition-colors">
+          <div class="relative flex-shrink-0">
+            <div class="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-[11px] font-display font-semibold text-violet-300">AY</div>
+            <span class="lg:hidden absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 border-2 border-cyber-surface"></span>
+          </div>
+          <div class="hidden lg:block leading-tight flex-1 min-w-0">
             <p class="text-xs font-medium text-slate-200">Aym</p>
             <p class="text-[10px] text-slate-500">Security Engineer</p>
           </div>
+          <i data-lucide="chevron-right" class="hidden lg:block w-3.5 h-3.5 text-slate-600 flex-shrink-0"></i>
         </div>
       </div>
     </aside>
@@ -154,6 +158,10 @@
           <p id="last-sync" class="text-xs text-slate-500 font-mono mt-0.5">Synchronisation…</p>
         </div>
         <div class="flex items-center gap-3">
+          <button id="header-profile-trigger" type="button" class="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-medium bg-violet-500/10 text-violet-300 border-violet-500/30 hover:bg-violet-500/20 hover:border-violet-500/50 transition-colors">
+            <i data-lucide="user-circle" class="w-3.5 h-3.5 flex-shrink-0"></i>
+            <span class="hidden sm:inline">Profil / CV</span>
+          </button>
           <span id="clock" class="hidden sm:inline font-mono text-xs text-slate-500"></span>
           <div id="status-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-medium bg-cyber-surface-2 text-slate-400 border-cyber-border">
             <span class="w-2 h-2 rounded-full bg-slate-500 status-pulse"></span>
@@ -466,6 +474,71 @@
 
         <!-- VUE DÉDIÉE : Paramètres (onglet settings) -->
         <section id="section-settings" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
+        </section>
+
+        <section id="section-profile" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="lg:col-span-1 bg-cyber-surface border border-cyber-border rounded-2xl p-6 flex flex-col items-center text-center">
+            <img src="/static/img/photo_cv.png" alt="Aymeric Rajaofetra" class="w-28 h-28 rounded-full object-cover border-2 border-cyan-500/40 mb-4">
+            <p class="font-display font-semibold text-lg text-slate-100">Aymeric Rajaofetra</p>
+            <p class="text-xs text-slate-500 mb-1">alias "Aym"</p>
+            <p class="text-sm text-cyan-300 font-medium mb-4">DevSecOps / Cloud Security</p>
+            <div class="flex flex-wrap justify-center gap-1.5 mb-5">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">MASTERE CYBERSECURITE &amp; RESEAUX</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-violet-500/10 text-violet-300 border border-violet-500/20">SECURITY+ EN PREPARATION</span>
+            </div>
+            <div class="w-full space-y-2 text-left text-xs text-slate-400 mb-5">
+              <div class="flex items-center gap-2"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-500 flex-shrink-0"></i>Villecresnes (94)</div>
+              <div class="flex items-center gap-2"><i data-lucide="mail" class="w-3.5 h-3.5 text-slate-500 flex-shrink-0"></i>aym-sec-engineer@proton.me</div>
+              <div class="flex items-center gap-2"><i data-lucide="github" class="w-3.5 h-3.5 text-slate-500 flex-shrink-0"></i>github.com/aym-sec-engineer</div>
+              <div class="flex items-center gap-2"><i data-lucide="linkedin" class="w-3.5 h-3.5 text-slate-500 flex-shrink-0"></i>linkedin.com/in/aymrajao</div>
+            </div>
+            <a href="/static/docs/cv-aymeric-rajaofetra.pdf" download class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              Telecharger le CV (PDF)
+            </a>
+          </div>
+          <div class="lg:col-span-2 space-y-4">
+            <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-6">
+              <p class="font-display font-semibold text-sm text-slate-100 mb-4">Competences techniques</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Securite &amp; DevSecOps</p>
+                  <p class="text-slate-300 leading-relaxed">Durcissement Linux/SSH - Trivy (supply chain) - ModSecurity / OWASP CRS - CrowdSec / nftables - DAST (OWASP ZAP) - Gestion des secrets - TLS / Let's Encrypt - Segmentation reseau Docker - Headers de securite HTTP</p>
+                </div>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">CI/CD &amp; IaC</p>
+                  <p class="text-slate-300 leading-relaxed">GitHub Actions - Docker / Docker Compose - Ansible - Traefik</p>
+                </div>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Observabilite</p>
+                  <p class="text-slate-300 leading-relaxed">Prometheus (node-exporter, cAdvisor) - Grafana</p>
+                </div>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Automatisation &amp; Dev</p>
+                  <p class="text-slate-300 leading-relaxed">HubSpot, Make, Zapier, n8n - API REST - SQL - Python - Flask</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-6">
+              <div class="flex items-start justify-between mb-2">
+                <p class="font-display font-semibold text-sm text-slate-100">Produit Tech &amp; Projets Digitaux</p>
+                <span class="text-[10px] font-mono text-slate-500 flex-shrink-0">Avr. 2025 - Avr. 2026</span>
+              </div>
+              <p class="text-xs text-cyan-300 mb-3">La Casa Coliving - Alternance</p>
+              <p class="text-xs text-slate-400 leading-relaxed">Pilotage de plus de 200 workflows HubSpot et 70 scenarios Zapier, migration d'un CRM de plus de 3 000 enregistrements, conception de "Casa Finder" (matching geographique via API), integration d'une IA support client, automatisations Slack et reporting analytique.</p>
+            </div>
+            <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-6">
+              <div class="flex items-start justify-between mb-2">
+                <p class="font-display font-semibold text-sm text-slate-100">Marley - Infrastructure DevSecOps auto-hebergee</p>
+                <span class="text-[10px] font-mono text-slate-500 flex-shrink-0">Juin 2026 - en cours</span>
+              </div>
+              <p class="text-xs text-slate-400 leading-relaxed mb-3">Ce dashboard : Traefik v3 -> ModSecurity WAF -> Flask sur reseaux Docker segmentes, CI/CD GitHub Actions avec Trivy bloquant, CrowdSec + nftables, observabilite Prometheus/Grafana, DAST OWASP ZAP (0 FAIL-NEW, 4 WARN-NEW, 109 PASS).</p>
+              <a href="https://github.com/aym-sec-engineer/marley-app" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-xs text-cyan-300 hover:text-cyan-200">
+                <i data-lucide="github" class="w-3.5 h-3.5"></i>
+                github.com/aym-sec-engineer/marley-app
+              </a>
+            </div>
+          </div>
         </section>
 
         <section id="tab-placeholder" class="hidden bg-cyber-surface border border-cyber-border rounded-2xl p-12 text-center">
@@ -985,7 +1058,7 @@
     const placeholder = document.getElementById('tab-placeholder');
 
     function switch_tab(tab) {
-      const dedicatedIds = ['tab-placeholder', 'section-events-full', 'section-containers-full', 'section-network', 'section-compliance', 'section-settings'];
+      const dedicatedIds = ['tab-placeholder', 'section-events-full', 'section-containers-full', 'section-network', 'section-compliance', 'section-settings', 'section-profile'];
 
       if (tab === 'overview') {
         mainSections.forEach(s => { if (!dedicatedIds.includes(s.id)) s.classList.remove('hidden'); });
@@ -1006,6 +1079,10 @@
       } else if (tab === 'settings') {
         mainSections.forEach(s => s.classList.add('hidden'));
         document.getElementById('section-settings').classList.remove('hidden');
+        lucide.createIcons();
+      } else if (tab === 'profile') {
+        mainSections.forEach(s => s.classList.add('hidden'));
+        document.getElementById('section-profile').classList.remove('hidden');
         lucide.createIcons();
       } else {
         mainSections.forEach(s => s.classList.add('hidden'));
@@ -1028,6 +1105,9 @@
         switch_tab(l.dataset.tab);
       });
     });
+
+    document.getElementById('profile-card-trigger').addEventListener('click', () => switch_tab('profile'));
+    document.getElementById('header-profile-trigger').addEventListener('click', () => switch_tab('profile'));
 
     lucide.createIcons();
     fetch_all();
