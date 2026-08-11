@@ -1,4 +1,4 @@
-# 🛡️ Marley — Infrastructure DevSecOps Production-Ready
+# 🛡️ Marley — infrastructure DevSecOps de laboratoire/portfolio conçue selon des pratiques de production
 
 > Lab d'infrastructure auto-hébergé, construit pour maîtriser concrètement la chaîne
 > complète DevSecOps : durcissement système, reverse proxy sécurisé, défense en
@@ -70,8 +70,8 @@ Flask · Docker Compose · GitHub Actions · Trivy · Prometheus · Grafana · O
 ## 🔒 Points de sécurité notables
 
 - **Isolation réseau stricte** : `backend` et `monitoring` marqués `internal: true` —
-  aucune route sortante possible vers Internet au niveau kernel Docker, même en cas
-  de compromission applicative.
+  Les réseaux Docker backend et monitoring sont déclarés internes afin de limiter leur
+  connectivité externe et de réduire le périmètre réseau accessible en cas de compromission.
 - **Défense en profondeur** : CrowdSec (L3/L4, comportemental, bannissement IP kernel
   via nftables) + ModSecurity (L7, inspection requête par requête). Une vraie IP
   (`77.239.124.102`) a été bannie automatiquement après tentative de bruteforce SSH.
