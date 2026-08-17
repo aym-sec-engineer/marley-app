@@ -313,11 +313,12 @@
         <section class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 lg:p-6">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div>
-              <h2 class="text-sm font-semibold text-slate-100">Tentatives bloquées — 24 h</h2>
-              <p class="text-[11px] text-slate-500 mt-0.5">CrowdSec (L3/L4) vs WAF ModSecurity (L7)</p>
+              <h2 class="text-sm font-semibold text-slate-100">Activité sécurité — 24 h</h2>
+              <p class="text-[11px] text-slate-500 mt-0.5">Logs analysés (CrowdSec) vs décisions de ban actives vs WAF ModSecurity (L7)</p>
             </div>
             <div class="flex items-center gap-4 text-[11px] font-mono">
-              <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-cyan-400 inline-block"></span><span class="text-slate-400">CrowdSec</span><strong id="total-cs" class="text-slate-200 ml-1">—</strong></span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-cyan-400 inline-block"></span><span class="text-slate-400">Logs analysés</span><strong id="total-cs" class="text-slate-200 ml-1">—</strong></span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-rose-400 inline-block"></span><span class="text-slate-400">Décisions actives</span><strong id="total-decisions" class="text-slate-200 ml-1">—</strong></span>
               <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-orange-400 inline-block"></span><span class="text-slate-400">WAF</span><strong id="total-waf" class="text-slate-200 ml-1">—</strong></span>
             </div>
           </div>
@@ -601,10 +602,20 @@
           labels: data.labels,
           datasets: [
             {
-              label: 'CrowdSec',
-              data: data.datasets.crowdsec,
+              label: 'Logs analysés',
+              data: data.datasets.logs_analyzed,
               borderColor: 'rgba(34,211,238,0.85)',
               backgroundColor: 'rgba(34,211,238,0.06)',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.4,
+              fill: true,
+            },
+            {
+              label: 'Décisions actives',
+              data: data.datasets.active_decisions,
+              borderColor: 'rgba(251,113,133,0.85)',
+              backgroundColor: 'rgba(251,113,133,0.06)',
               borderWidth: 1.5,
               pointRadius: 0,
               tension: 0.4,
@@ -1018,8 +1029,9 @@
     // ── Render: /api/v1/timeline ──────────────────────────────────
     function render_timeline(d) {
       build_chart(d);
-      document.getElementById('total-cs').textContent  = d.totals?.crowdsec ?? 0;
-      document.getElementById('total-waf').textContent = d.totals?.waf ?? 0;
+      document.getElementById('total-cs').textContent        = d.totals?.logs_analyzed ?? 0;
+      document.getElementById('total-decisions').textContent = d.totals?.active_decisions ?? 0;
+      document.getElementById('total-waf').textContent       = d.totals?.waf ?? 0;
     }
 
     // ── Fetch all endpoints ───────────────────────────────────────

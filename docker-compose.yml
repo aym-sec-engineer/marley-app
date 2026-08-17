@@ -41,7 +41,7 @@ services:
       - PARANOIA=1
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.waf.rule=Host(`137.74.163.44.sslip.io`)"
+      - "traefik.http.routers.waf.rule=Host(`marley.aymrajao.dev`) || Host(`137.74.163.44.sslip.io`)"
       - "traefik.http.routers.waf.entrypoints=websecure"
       - "traefik.http.routers.waf.tls.certresolver=letsencrypt"
       - "traefik.http.services.waf.loadbalancer.server.port=8080"
@@ -147,7 +147,7 @@ services:
       - prometheus
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.137.74.163.44.sslip.io`)"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.aymrajao.dev`) || Host(`grafana.137.74.163.44.sslip.io`)"
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"

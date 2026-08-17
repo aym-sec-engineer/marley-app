@@ -8,7 +8,7 @@
 **Stack** : Ubuntu 24.04 LTS · Ansible · Traefik v3 · ModSecurity (OWASP CRS) · CrowdSec ·
 Flask · Docker Compose · GitHub Actions · Trivy · Prometheus · Grafana · OWASP ZAP
 
-**Domaine** : `137.74.163.44.sslip.io` — VPS OVH
+**Domaine** : `marley.aymrajao.dev` — VPS OVH
 
 ---
 

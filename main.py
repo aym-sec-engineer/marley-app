@@ -565,48 +565,66 @@ def get_attacks_timeline(hours: int = 24) -> dict:
         ts = now - timedelta(hours=i)
         labels.append(ts.strftime("%H:%M"))
 
-    crowdsec_series: list[int] = [0] * len(labels)
-    crowdsec_source = "unavailable"
+    def _query_range(query: str) -> tuple[list[int], str]:
+        """Interroge Prometheus sur la fenêtre [start, now], retourne une
+        série alignée sur `labels` + son statut de source."""
+        series = [0] * len(labels)
+        source = "unavailable"
+        try:
+            resp = requests.get(
+                f"{PROMETHEUS_URL}/api/v1/query_range",
+                params={
+                    "query": query,
+                    "start": start.timestamp(),
+                    "end": now.timestamp(),
+                    "step": "3600s",
+                },
+                timeout=3,
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            result = payload.get("data", {}).get("result", [])
+            source = "prometheus"  # requête réussie, avec ou sans série retournée
+            if result:
+                values = result[0].get("values", [])
+                parsed = [int(float(v)) for _, v in values]
+                if len(parsed) >= len(series):
+                    series = parsed[-len(series):]
+                else:
+                    series[-len(parsed):] = parsed
+        except (requests.RequestException, ValueError, KeyError) as exc:
+            app.logger.warning("get_attacks_timeline(%s): Prometheus injoignable (%s)", query, exc)
+        return series, source
 
-    try:
-        resp = requests.get(
-            f"{PROMETHEUS_URL}/api/v1/query_range",
-            params={
-                "query": "sum(increase(cs_node_hits_total[1h]))",
-                "start": start.timestamp(),
-                "end": now.timestamp(),
-                "step": "3600s",
-            },
-            timeout=3,
-        )
-        resp.raise_for_status()
-        payload = resp.json()
-        result = payload.get("data", {}).get("result", [])
-        if result:
-            values = result[0].get("values", [])
-            parsed = [int(float(v)) for _, v in values]
-            if len(parsed) >= len(labels):
-                crowdsec_series = parsed[-len(labels):]
-            else:
-                crowdsec_series[-len(parsed):] = parsed
-            crowdsec_source = "prometheus"
-    except (requests.RequestException, ValueError, KeyError) as exc:
-        app.logger.warning("get_attacks_timeline: Prometheus injoignable (%s)", exc)
+    # Logs analysés par les parsers CrowdSec (compteur cumulatif, tout
+    # trafic confondu -- volume d'activité, PAS un nombre d'attaques)
+    logs_series, logs_source = _query_range("sum(increase(cs_node_hits_total[1h]))")
+
+    # Décisions de ban actives émises localement par CE host (gauge,
+    # échantillonnée dans le temps). origin!="CAPI" exclut la blocklist
+    # communautaire pour rester cohérent avec le KPI blocked_ips_count
+    # qui ne compte, lui aussi, que les décisions locales.
+    decisions_series, decisions_source = _query_range(
+        'sum(cs_active_decisions{origin!="CAPI"})'
+    )
 
     waf_series: list[int] = [0] * len(labels)
 
     return {
         "labels": labels,
         "datasets": {
-            "crowdsec": crowdsec_series,
+            "logs_analyzed": logs_series,
+            "active_decisions": decisions_series,
             "waf": waf_series,
         },
         "totals": {
-            "crowdsec": sum(crowdsec_series),
+            "logs_analyzed": sum(logs_series),
+            "active_decisions": decisions_series[-1] if decisions_series else 0,
             "waf": sum(waf_series),
         },
         "meta": {
-            "crowdsec_source": crowdsec_source,
+            "logs_analyzed_source": logs_source,
+            "active_decisions_source": decisions_source,
             "waf_source": "not_instrumented",
         },
     }
