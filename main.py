@@ -543,26 +543,57 @@ def get_docker_networks() -> tuple[list[dict], bool]:
 # COLLECTEURS — Série temporelle des attaques (Chart.js)
 # ═══════════════════════════════════════════════════════════════════
 
+PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://prometheus:9090")
+
+
 def get_attacks_timeline(hours: int = 24) -> dict:
     """Série temporelle horaire des tentatives bloquées, ventilée par
     couche de défense (CrowdSec L3/L4 vs WAF L7) — alimente le graphique
-    linéaire du tableau de bord."""
+    linéaire du tableau de bord.
+
+    CrowdSec : increase(cs_node_hits_total) agrégé par pas d'1h, requêté
+    en direct sur Prometheus. WAF : aucune instrumentation Prometheus
+    n'existe actuellement pour ModSecurity -> explicitement marqué
+    "not_instrumented", jamais de valeur inventée."""
 
     hours = max(1, min(hours, 168))  # borne 1h à 7 jours
     now = datetime.now(timezone.utc)
+    start = now - timedelta(hours=hours)
 
     labels: list[str] = []
-    crowdsec_series: list[int] = []
-    waf_series: list[int] = []
-
     for i in range(hours, -1, -1):
         ts = now - timedelta(hours=i)
         labels.append(ts.strftime("%H:%M"))
-        # Profil "jour ouvré" : davantage de bruit en journée
-        hour_of_day = ts.hour
-        intensity = 1.0 if 6 <= hour_of_day <= 22 else 0.35
-        crowdsec_series.append(int(random.uniform(0, 12) * intensity))
-        waf_series.append(int(random.uniform(0, 8) * intensity))
+
+    crowdsec_series: list[int] = [0] * len(labels)
+    crowdsec_source = "unavailable"
+
+    try:
+        resp = requests.get(
+            f"{PROMETHEUS_URL}/api/v1/query_range",
+            params={
+                "query": "sum(increase(cs_node_hits_total[1h]))",
+                "start": start.timestamp(),
+                "end": now.timestamp(),
+                "step": "3600s",
+            },
+            timeout=3,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+        result = payload.get("data", {}).get("result", [])
+        if result:
+            values = result[0].get("values", [])
+            parsed = [int(float(v)) for _, v in values]
+            if len(parsed) >= len(labels):
+                crowdsec_series = parsed[-len(labels):]
+            else:
+                crowdsec_series[-len(parsed):] = parsed
+            crowdsec_source = "prometheus"
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        app.logger.warning("get_attacks_timeline: Prometheus injoignable (%s)", exc)
+
+    waf_series: list[int] = [0] * len(labels)
 
     return {
         "labels": labels,
@@ -573,6 +604,10 @@ def get_attacks_timeline(hours: int = 24) -> dict:
         "totals": {
             "crowdsec": sum(crowdsec_series),
             "waf": sum(waf_series),
+        },
+        "meta": {
+            "crowdsec_source": crowdsec_source,
+            "waf_source": "not_instrumented",
         },
     }
 

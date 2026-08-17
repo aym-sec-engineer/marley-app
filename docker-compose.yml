@@ -1,6 +1,8 @@
 services:
   traefik:
     image: traefik:v3.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     container_name: traefik
     command:
       - "--api.insecure=false"
@@ -58,6 +60,7 @@ services:
     restart: unless-stopped
     networks:
       - backend
+      - monitoring
     expose:
       - "5000"
     volumes:
@@ -107,6 +110,8 @@ services:
     image: prom/prometheus:v2.54.1
     container_name: prometheus
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
