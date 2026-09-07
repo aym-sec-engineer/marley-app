@@ -55,7 +55,7 @@ services:
 
   marley_app:
     build: .
-    image: cyberaym/marley-test:v1.1
+    image: cyberaym/marley-test:${MARLEY_IMAGE_TAG:-v1.1}
     container_name: marley_app
     restart: unless-stopped
     networks:
