@@ -12,6 +12,8 @@ RUN pip install --no-cache-dir --user -r requirements.txt gunicorn
 # ═══════════════════ STAGE 2 — Runtime (minimal, sans pip/setuptools) ═══════════════════
 FROM python:3.11-alpine
 
+RUN apk upgrade --no-cache
+
 WORKDIR /app
 
 COPY --from=builder /root/.local /home/marley/.local
