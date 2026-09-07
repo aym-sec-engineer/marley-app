@@ -12,10 +12,9 @@ Ce serveur expose les métriques de sécurité de l'infrastructure Marley :
   - Série temporelle des tentatives bloquées (pour Chart.js)
 
 Stratégie de données : chaque collecteur tente d'abord une lecture
-RÉELLE (cscli, psutil, Docker SDK). En cas d'échec (environnement
-de dev local, socket non monté, cscli absent), un jeu de données
-SIMULÉ mais réaliste est retourné — le champ "data_source" de chaque
-réponse indique "live" ou "simulated".
+RÉELLE (CrowdSec LAPI, psutil, Prometheus/cAdvisor). Les collecteurs
+ne nécessitent aucun accès direct au daemon Docker. Les fallbacks
+éventuels sont explicitement signalés par le champ "data_source".
 """
 
 from __future__ import annotations
@@ -36,13 +35,6 @@ try:
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
-
-try:
-    import docker
-    DOCKER_AVAILABLE = True
-except ImportError:
-    DOCKER_AVAILABLE = False
-
 
 # ═══════════════════════════════════════════════════════════════════
 # CONFIGURATION — variables d'environnement, valeurs par défaut sûres
@@ -179,12 +171,14 @@ INFO_EVENTS = [
 ]
 
 MARLEY_CONTAINERS = [
-    {"name": "marley_proxy", "role": "WAF / Reverse Proxy", "image": "owasp/modsecurity-crs:nginx"},
-    {"name": "marley_app", "role": "Application", "image": "marley-app:latest"},
-    {"name": "crowdsec", "role": "IDS / IPS", "image": "crowdsecurity/crowdsec"},
-    {"name": "prometheus", "role": "Monitoring", "image": "prom/prometheus"},
-    {"name": "grafana", "role": "Dashboards", "image": "grafana/grafana"},
-    {"name": "certbot", "role": "TLS Renewal", "image": "certbot/certbot"},
+    {"name": "traefik", "role": "Reverse Proxy / TLS", "image": "traefik:v3.1"},
+    {"name": "marley-waf", "role": "WAF / OWASP CRS", "image": "owasp/modsecurity-crs:nginx-alpine"},
+    {"name": "marley_app", "role": "Application", "image": "cyberaym/marley-test"},
+    {"name": "prometheus", "role": "Metrics Backend", "image": "prom/prometheus:v2.54.1"},
+    {"name": "grafana", "role": "Dashboards", "image": "grafana/grafana:11.2.0"},
+    {"name": "node-exporter", "role": "Host Metrics", "image": "prom/node-exporter:v1.8.2"},
+    {"name": "cadvisor", "role": "Container Metrics", "image": "gcr.io/cadvisor/cadvisor:v0.52.1"},
+    {"name": "juice-shop", "role": "DAST Training Target", "image": "bkimminich/juice-shop"},
 ]
 
 
@@ -419,41 +413,153 @@ def _simulate_container_metrics() -> list[dict]:
 
 
 def get_container_metrics() -> tuple[list[dict], bool]:
-    """Métriques CPU/RAM par conteneur.
+    """Métriques CPU/RAM des conteneurs via Prometheus/cAdvisor.
 
-    Tente le SDK Docker (nécessite le montage en LECTURE SEULE de
-    /var/run/docker.sock). En son absence, retourne un jeu simulé
-    réaliste.
+    L'application n'interroge pas directement le daemon Docker.
+    cAdvisor collecte les métriques des conteneurs et Prometheus les
+    centralise. En cas d'indisponibilité, retourne les données simulées.
 
-    Retourne (metrics, is_live)."""
+    Retourne (metrics, is_live).
+    """
 
-    if DOCKER_AVAILABLE:
-        try:
-            client = docker.from_env()
-            metrics = []
-            role_map = {c["name"]: c["role"] for c in MARLEY_CONTAINERS}
+    try:
+        url = f"{PROMETHEUS_URL}/api/v1/query"
 
-            for container in client.containers.list():
-                try:
-                    stats = container.stats(stream=False)
-                    mem_usage = stats.get("memory_stats", {}).get("usage", 0)
-                    mem_limit = stats.get("memory_stats", {}).get("limit", 1) or 1
-                    metrics.append({
-                        "name": container.name,
-                        "role": role_map.get(container.name, "Service"),
-                        "image": (container.image.tags[0] if container.image.tags else container.image.short_id),
-                        "status": container.status,
-                        "cpu_percent": _calculate_cpu_percent(stats),
-                        "mem_percent": round((mem_usage / mem_limit) * 100, 2),
-                        "mem_usage_mb": round(mem_usage / (1024 * 1024), 1),
-                    })
-                except Exception:
+        queries = {
+            "memory":
+                'container_memory_working_set_bytes{name!=""}',
+            "memory_limit":
+                'container_spec_memory_limit_bytes{name!=""}',
+            "cpu":
+                'rate(container_cpu_usage_seconds_total{name!="",cpu="total"}[2m])',
+            "last_seen":
+                'container_last_seen{name!=""}',
+        }
+
+        results = {}
+
+        for key, query in queries.items():
+            response = requests.get(
+                url,
+                params={"query": query},
+                timeout=5,
+            )
+            response.raise_for_status()
+
+            payload = response.json()
+
+            if payload.get("status") != "success":
+                raise RuntimeError(
+                    f"Prometheus query failed: {key}"
+                )
+
+            results[key] = payload["data"]["result"]
+
+        # Une même identité de conteneur peut avoir plusieurs séries
+        # historiques après un redéploiement. On conserve la série
+        # ayant le container_last_seen le plus récent.
+        latest_by_name = {}
+
+        for item in results["last_seen"]:
+            metric = item.get("metric", {})
+            name = metric.get("name")
+
+            if not name:
+                continue
+
+            try:
+                last_seen = float(item["value"][1])
+            except (KeyError, IndexError, TypeError, ValueError):
+                continue
+
+            current = latest_by_name.get(name)
+
+            if current is None or last_seen > current["last_seen"]:
+                latest_by_name[name] = {
+                    "last_seen": last_seen,
+                    "metric": metric,
+                }
+
+        role_map = {
+            c["name"]: c["role"]
+            for c in MARLEY_CONTAINERS
+        }
+
+        def current_value(series, name, container_id):
+            for item in series:
+                metric = item.get("metric", {})
+
+                if metric.get("name") != name:
                     continue
 
-            if metrics:
-                return metrics, True
-        except Exception:
-            pass
+                if (
+                    container_id
+                    and metric.get("id") != container_id
+                ):
+                    continue
+
+                try:
+                    return float(item["value"][1])
+                except (KeyError, IndexError, TypeError, ValueError):
+                    continue
+
+            return 0.0
+
+        metrics = []
+
+        for name, meta in latest_by_name.items():
+            if name not in role_map:
+                continue
+
+            container_id = meta["metric"].get("id")
+
+            memory = current_value(
+                results["memory"],
+                name,
+                container_id,
+            )
+
+            memory_limit = current_value(
+                results["memory_limit"],
+                name,
+                container_id,
+            )
+
+            cpu_cores = current_value(
+                results["cpu"],
+                name,
+                container_id,
+            )
+
+            mem_percent = (
+                (memory / memory_limit) * 100
+                if memory_limit > 0
+                else 0.0
+            )
+
+            image = (
+                meta["metric"].get("image")
+                or "unknown"
+            )
+
+            metrics.append({
+                "name": name,
+                "role": role_map.get(name, "Service"),
+                "image": image,
+                "status": "running",
+                "cpu_percent": round(cpu_cores * 100, 2),
+                "mem_percent": round(mem_percent, 2),
+                "mem_usage_mb": round(
+                    memory / (1024 * 1024),
+                    1,
+                ),
+            })
+
+        if metrics:
+            return metrics, True
+
+    except Exception:
+        pass
 
     return _simulate_container_metrics(), False
 
@@ -462,81 +568,53 @@ def get_container_metrics() -> tuple[list[dict], bool]:
 # COLLECTEURS — Réseaux Docker
 # ═══════════════════════════════════════════════════════════════════
 
-def _simulate_docker_networks() -> list[dict]:
-    """Jeu de données simulé — utilisé si le socket Docker n'est pas
-    accessible depuis ce conteneur (choix de durcissement assumé)."""
+def get_configured_networks() -> list[dict]:
+    """Topologie réseau déclarée par docker-compose.yml.
+
+    Les adresses IPv4 Docker étant dynamiques, elles ne sont pas
+    présentées comme une source de vérité. Cette vue décrit uniquement
+    les relations réseau intentionnelles de la stack.
+    """
 
     return [
         {
             "name": "web",
-            "driver": "bridge",
+            "driver": "external",
             "internal": False,
-            "subnet": "172.18.0.0/24",
+            "subnet": "dynamic",
             "containers": [
-                {"name": "traefik", "ipv4": "172.18.0.2"},
-                {"name": "marley_proxy", "ipv4": "172.18.0.3"},
+                {"name": "traefik", "ipv4": "—"},
+                {"name": "marley-waf", "ipv4": "—"},
+                {"name": "prometheus", "ipv4": "—"},
+                {"name": "grafana", "ipv4": "—"},
             ],
         },
         {
             "name": "backend",
             "driver": "bridge",
             "internal": True,
-            "subnet": "172.19.0.0/24",
+            "subnet": "dynamic",
             "containers": [
-                {"name": "marley_proxy", "ipv4": "172.19.0.2"},
-                {"name": "marley_app", "ipv4": "172.19.0.3"},
+                {"name": "marley-waf", "ipv4": "—"},
+                {"name": "marley_app", "ipv4": "—"},
+                {"name": "juice-shop", "ipv4": "—"},
             ],
         },
         {
             "name": "monitoring",
             "driver": "bridge",
             "internal": True,
-            "subnet": "172.20.0.0/24",
+            "subnet": "dynamic",
             "containers": [
-                {"name": "prometheus", "ipv4": "172.20.0.2"},
-                {"name": "grafana", "ipv4": "172.20.0.3"},
+                {"name": "traefik", "ipv4": "—"},
+                {"name": "marley_app", "ipv4": "—"},
+                {"name": "prometheus", "ipv4": "—"},
+                {"name": "grafana", "ipv4": "—"},
+                {"name": "node-exporter", "ipv4": "—"},
+                {"name": "cadvisor", "ipv4": "—"},
             ],
         },
     ]
-
-
-def get_docker_networks() -> tuple[list[dict], bool]:
-    """Inventaire des réseaux Docker et des conteneurs qui y sont
-    rattachés (nom, IP), via le SDK Docker.
-
-    Retourne (networks, is_live)."""
-
-    if DOCKER_AVAILABLE:
-        try:
-            client = docker.from_env()
-            networks = []
-
-            for net in client.networks.list():
-                if net.name in ("none", "host", "bridge"):
-                    continue
-                net.reload()
-                attrs = net.attrs
-                containers_in_net = []
-                for cid, cinfo in (attrs.get("Containers") or {}).items():
-                    containers_in_net.append({
-                        "name": cinfo.get("Name", cid[:12]),
-                        "ipv4": (cinfo.get("IPv4Address") or "").split("/")[0] or "—",
-                    })
-                ipam_config = attrs.get("IPAM", {}).get("Config") or []
-                networks.append({
-                    "name": net.name,
-                    "driver": attrs.get("Driver", "—"),
-                    "internal": attrs.get("Internal", False),
-                    "subnet": ipam_config[0].get("Subnet", "—") if ipam_config else "—",
-                    "containers": containers_in_net,
-                })
-
-            if networks:
-                return networks, True
-        except Exception:
-            pass
-
-    return _simulate_docker_networks(), False
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -758,11 +836,11 @@ def api_containers():
 def api_network():
     """Inventaire des réseaux Docker et des conteneurs qui y sont rattachés."""
 
-    networks, is_live = get_docker_networks()
+    networks = get_configured_networks()
     return jsonify({
         "networks": networks,
         "count": len(networks),
-        "data_source": "live" if is_live else "simulated",
+        "data_source": "configured",
     })
 
 

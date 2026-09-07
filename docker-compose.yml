@@ -64,7 +64,6 @@ services:
     expose:
       - "5000"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./compliance:/app/compliance:ro
     environment:
       - APP_NAME=MarleyDashboard
