@@ -50,6 +50,21 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
 
+      - name: Generate CycloneDX SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: cyberaym/marley-test:${{ steps.meta.outputs.tag }}
+          format: cyclonedx
+          output: marley-sbom.cdx.json
+
+      - name: Upload CycloneDX SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: marley-sbom-${{ steps.meta.outputs.tag }}
+          path: marley-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Trivy scan — rapport SARIF (visible dans l'onglet Security GitHub)
         if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
