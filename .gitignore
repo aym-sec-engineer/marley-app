@@ -6,3 +6,6 @@ __pycache__/
 templates/index.html.stub.bak
 *.bak*
 dast-reports/
+
+# Frontend build dependencies
+node_modules/

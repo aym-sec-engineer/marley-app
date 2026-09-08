@@ -1,0 +1,12 @@
+{
+  "name": "marley-frontend",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./frontend/tailwind.css -o ./static/css/app.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17",
+    "chart.js": "4.4.4",
+    "lucide": "1.43.0"
+  }
+}
