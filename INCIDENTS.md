@@ -29,8 +29,11 @@ interroge encore pour la plupart de ses métriques.
 **Diagnostic** : seul le tag `v1.0` existait réellement sur DockerHub
 (vérifié via l'API `hub.docker.com/v2/repositories/.../tags`).
 
-**Fix temporaire** : pointage vers `v1.0` existant. **Fix définitif** :
-correction de la CI pour pousser systématiquement `latest` en plus du tag versionné.
+**Fix à ce stade du projet** : pointage vers `v1.0` existant, puis correction
+de la CI pour pousser `latest` en plus du tag versionné.
+
+**Évolution ultérieure** : ce mécanisme a ensuite été remplacé par un déploiement
+sur tag de commit explicite ; le pipeline actuel ne dépend plus de `latest`.
 
 ---
 
