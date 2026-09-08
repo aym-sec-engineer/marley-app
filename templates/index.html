@@ -704,7 +704,7 @@
       document.getElementById('cs-blocked-big').textContent = blocked;
       document.getElementById('cs-source-label').textContent = `source: ${d.crowdsec?.data_source ?? '—'}`;
       document.getElementById('cs-community-label').textContent = `threat intel communautaire: ${(d.crowdsec?.community_blocklist_count ?? 0).toLocaleString('fr-FR')} IPs`;
-      document.getElementById('crowdsec-source').textContent = d.crowdsec?.data_source === 'live' ? '🟢 live' : '🟡 simulated';
+      document.getElementById('crowdsec-source').textContent = data_source_label(d.crowdsec?.data_source);
 
       // KPI: CPU
       const cpu = d.host?.cpu_percent ?? 0;
