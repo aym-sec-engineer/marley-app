@@ -104,16 +104,15 @@ def get_security_headers() -> dict:
         "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
         "Content-Security-Policy": (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' "
-            "https://cdn.tailwindcss.com "
-            "https://cdn.jsdelivr.net "
-            "https://unpkg.com; "
+            "script-src 'self'; "
             "style-src 'self' 'unsafe-inline' "
-            "https://fonts.googleapis.com "
-            "https://cdn.jsdelivr.net; "
+            "https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data:; "
-            "connect-src 'self';"
+            "connect-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "frame-ancestors 'none';"
         ),
     }
 
@@ -123,11 +122,12 @@ def apply_security_headers(response):
     """Applique un set d'en-têtes de sécurité conforme aux
     recommandations OWASP Secure Headers Project.
 
-    Le CSP autorise explicitement les CDN utilisés par le frontend
-    (Tailwind Play CDN, Chart.js, Lucide, Google Fonts). 'unsafe-inline'
-    est un compromis assumé pour ce prototype basé sur CDN — en
-    production durcie, on bascule sur un build Tailwind/JS local avec
-    des nonces CSP par requête."""
+    La CSP n'autorise l'exécution JavaScript que depuis l'origine
+    applicative : les dépendances frontend et le JavaScript Marley sont
+    servis localement. Le CSS conserve temporairement 'unsafe-inline'
+    car certaines barres de métriques utilisent encore des largeurs
+    calculées dynamiquement ; ce compromis est explicite et limité au
+    style-src."""
 
     for header_name, header_value in get_security_headers().items():
         response.headers[header_name] = header_value
