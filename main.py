@@ -282,12 +282,21 @@ def get_security_events(
         return [], {
             "data_source": "unavailable",
             "sources": sources,
-            "semantics": "active_decisions_snapshot",
+            "semantics": "local_active_decisions_snapshot",
         }
 
     events: list[dict] = []
 
-    for decision in decisions[:limit]:
+    # Security Events expose uniquement l'activité locale observée
+    # sur Marley. Les décisions CAPI relèvent du threat intelligence
+    # communautaire et ne prouvent pas une attaque contre ce VPS.
+    local_decisions = [
+        decision
+        for decision in decisions
+        if decision.get("origin") != "CAPI"
+    ]
+
+    for decision in local_decisions[:limit]:
         decision_type = str(
             decision.get("type", "ban")
         ).upper()
@@ -315,7 +324,7 @@ def get_security_events(
     return events, {
         "data_source": "live",
         "sources": sources,
-        "semantics": "active_decisions_snapshot",
+        "semantics": "local_active_decisions_snapshot",
     }
 
 # ═══════════════════════════════════════════════════════════════════
@@ -603,6 +612,111 @@ def get_configured_networks() -> list[dict]:
 PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://prometheus:9090")
 
 
+def query_prometheus_scalar(query: str) -> tuple[float | None, bool]:
+    """Exécute une requête Prometheus instantanée.
+
+    Retourne (value, is_live). Une requête réussie sans série vaut 0.
+    Une erreur réseau, HTTP ou de parsing retourne (None, False).
+    """
+
+    try:
+        resp = requests.get(
+            f"{PROMETHEUS_URL}/api/v1/query",
+            params={"query": query},
+            timeout=3,
+        )
+        resp.raise_for_status()
+
+        payload = resp.json()
+
+        if payload.get("status") != "success":
+            return None, False
+
+        result = payload.get("data", {}).get("result", [])
+
+        if not result:
+            return 0.0, True
+
+        value = result[0].get("value", [None, None])[1]
+
+        if value is None:
+            return None, False
+
+        return float(value), True
+
+    except (
+        requests.RequestException,
+        ValueError,
+        TypeError,
+        KeyError,
+        IndexError,
+    ) as exc:
+        app.logger.warning(
+            "Prometheus scalar query unavailable (%s): %s",
+            query,
+            exc,
+        )
+        return None, False
+
+
+def get_crowdsec_metrics() -> dict:
+    """Métriques CrowdSec exposées par Prometheus.
+
+    - scenario_triggers_24h :
+      nouveaux overflows de scénarios CrowdSec sur les dernières 24 h.
+    - retained_alerts :
+      alertes locales actuellement conservées par CrowdSec (hors CAPI).
+
+    Ces notions sont volontairement distinctes des décisions actives.
+    """
+
+    crowdsec_up, prometheus_live = query_prometheus_scalar(
+        'max(up{job="crowdsec"})'
+    )
+
+    # Prometheus peut être joignable alors que sa cible CrowdSec ne
+    # l'est plus. Dans ce cas, une absence de série ne doit jamais être
+    # transformée en faux zéro "live".
+    if not prometheus_live or crowdsec_up != 1.0:
+        return {
+            "scenario_triggers_24h": None,
+            "retained_alerts": None,
+            "triggers_data_source": "unavailable",
+            "alerts_data_source": "unavailable",
+        }
+
+    triggers, triggers_live = query_prometheus_scalar(
+        "sum(increase(cs_bucket_overflowed_total[24h]))"
+    )
+
+    alerts, alerts_live = query_prometheus_scalar(
+        "sum(cs_alerts)"
+    )
+
+    return {
+        "scenario_triggers_24h": (
+            int(round(triggers))
+            if triggers is not None
+            else None
+        ),
+        "retained_alerts": (
+            int(round(alerts))
+            if alerts is not None
+            else None
+        ),
+        "triggers_data_source": (
+            "live"
+            if triggers_live
+            else "unavailable"
+        ),
+        "alerts_data_source": (
+            "live"
+            if alerts_live
+            else "unavailable"
+        ),
+    }
+
+
 def get_attacks_timeline(hours: int = 24) -> dict:
     """Série temporelle horaire des tentatives bloquées, ventilée par
     couche de défense (CrowdSec L3/L4 vs WAF L7) — alimente le graphique
@@ -747,6 +861,7 @@ def api_status():
     """Statut agrégé avec provenance explicite des données."""
 
     decisions, decisions_live = get_crowdsec_decisions()
+    crowdsec_metrics = get_crowdsec_metrics()
     host = get_host_metrics()
 
     local_decisions = [
@@ -755,19 +870,25 @@ def api_status():
         if d.get("origin") != "CAPI"
     ]
 
-    blocked_count = len(local_decisions)
+    active_decisions = len(local_decisions)
     community_blocklist_count = (
-        len(decisions) - blocked_count
+        len(decisions) - active_decisions
     )
 
-    if not decisions_live:
+    telemetry_live = (
+        decisions_live
+        and crowdsec_metrics["triggers_data_source"] == "live"
+        and crowdsec_metrics["alerts_data_source"] == "live"
+    )
+
+    if not telemetry_live:
         global_status = "UNKNOWN"
-    elif blocked_count >= Config.THRESHOLD_ALERT:
+    elif active_decisions >= Config.THRESHOLD_ALERT:
         global_status = "ALERT"
-    elif blocked_count >= Config.THRESHOLD_ELEVATED:
+    elif active_decisions >= Config.THRESHOLD_ELEVATED:
         global_status = "ELEVATED"
     else:
-        global_status = "SECURE"
+        global_status = "NOMINAL"
 
     return jsonify({
         "global_status": global_status,
@@ -787,12 +908,22 @@ def api_status():
 
         "crowdsec": {
             "status": (
-                "reachable"
-                if decisions_live
-                else "unavailable"
+                "operational"
+                if telemetry_live
+                else (
+                    "degraded"
+                    if decisions_live
+                    else "unavailable"
+                )
             ),
-            "blocked_ips_count": (
-                blocked_count
+            "scenario_triggers_24h": (
+                crowdsec_metrics["scenario_triggers_24h"]
+            ),
+            "retained_alerts": (
+                crowdsec_metrics["retained_alerts"]
+            ),
+            "active_decisions": (
+                active_decisions
                 if decisions_live
                 else None
             ),
@@ -803,9 +934,26 @@ def api_status():
             ),
             "data_source": (
                 "live"
-                if decisions_live
-                else "unavailable"
+                if telemetry_live
+                else (
+                    "partial"
+                    if decisions_live
+                    else "unavailable"
+                )
             ),
+            "metrics": {
+                "scenario_triggers_24h": (
+                    crowdsec_metrics["triggers_data_source"]
+                ),
+                "retained_alerts": (
+                    crowdsec_metrics["alerts_data_source"]
+                ),
+                "active_decisions": (
+                    "live"
+                    if decisions_live
+                    else "unavailable"
+                ),
+            },
         },
 
         "host": host,

@@ -154,18 +154,17 @@
         <!-- KPI GRID -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-          <!-- KPI: IPs bloquées -->
+          <!-- KPI: déclenchements CrowdSec sur 24 h -->
           <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-2xl p-5">
             <div class="flex items-center justify-between mb-4">
-              <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">IPs bloquées</span>
+              <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">Déclenchements CrowdSec</span>
               <div class="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                <i data-lucide="shield-ban" class="w-4 h-4 text-red-400"></i>
+                <i data-lucide="shield-alert" class="w-4 h-4 text-red-400"></i>
               </div>
             </div>
-            <p id="kpi-blocked" class="font-display text-3xl font-bold text-slate-100">—</p>
-            <p class="text-xs text-slate-500 mt-1 font-mono">CrowdSec actif</p>
+            <p id="kpi-cs-triggers" class="font-display text-3xl font-bold text-slate-100">—</p>
+            <p id="kpi-cs-source" class="text-xs text-slate-500 mt-1 font-mono">dernières 24 h · —</p>
           </div>
-
           <!-- KPI: CPU -->
           <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-2xl p-5">
             <div class="flex items-center justify-between mb-4">
@@ -270,20 +269,32 @@
               </div>
               <div>
                 <p class="text-sm font-semibold text-slate-100">CrowdSec</p>
-                <p id="crowdsec-source" class="text-[10px] font-mono text-slate-500">IDS / IPS collaboratif</p>
+                <p class="text-[10px] font-mono text-slate-500">Détection comportementale SSH</p>
               </div>
-              <span class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-green-500/10 text-green-400 border border-green-500/20">ACTIVE</span>
+              <span id="crowdsec-health" class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-cyber-surface-2 text-slate-400 border border-cyber-border">—</span>
             </div>
-            <div class="flex items-end gap-4">
+
+            <div class="grid grid-cols-3 gap-3 pt-1">
               <div>
-                <p class="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Décisions actives</p>
-                <p id="cs-blocked-big" class="font-display text-4xl font-bold text-red-400">—</p>
+                <p id="cs-triggers-24h" class="font-display text-2xl font-bold text-slate-100">—</p>
+                <p class="mt-1 text-[9px] leading-tight text-slate-500 uppercase tracking-wider">Déclenchements · 24 h</p>
               </div>
-              <div class="mb-1 text-xs text-slate-400">IPs banniesBan</div>
+              <div>
+                <p id="cs-retained-alerts" class="font-display text-2xl font-bold text-slate-100">—</p>
+                <p class="mt-1 text-[9px] leading-tight text-slate-500 uppercase tracking-wider">Alertes conservées</p>
+              </div>
+              <div>
+                <p id="cs-active-decisions" class="font-display text-2xl font-bold text-slate-100">—</p>
+                <p class="mt-1 text-[9px] leading-tight text-slate-500 uppercase tracking-wider">Décisions actives</p>
+              </div>
             </div>
-            <p id="cs-source-label" class="text-[10px] font-mono text-slate-500">source: —</p>
-            <p id="cs-community-label" class="text-[10px] font-mono text-slate-600">threat intel communautaire: —</p>
+
+            <div class="pt-3 border-t border-cyber-border space-y-1">
+              <p id="cs-source-label" class="text-[10px] font-mono text-slate-500">source: —</p>
+              <p id="cs-community-label" class="text-[10px] font-mono text-slate-600">threat intel communautaire: —</p>
+            </div>
           </div>
+
 
         </section>
 
@@ -666,23 +677,63 @@
       const pill = document.getElementById('status-pill');
       const lbl  = document.getElementById('status-label');
       pill.className = 'flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-medium ';
-      if (status === 'SECURE')   { pill.className += 'pill-secure'; }
+      if (status === 'NOMINAL')       { pill.className += 'pill-secure'; }
       else if (status === 'ELEVATED') { pill.className += 'pill-elevated'; }
-      else                        { pill.className += 'pill-alert'; }
+      else                             { pill.className += 'pill-alert'; }
       lbl.textContent = status;
     }
 
     // ── Render: /api/v1/status ────────────────────────────────────
     function render_status(d) {
-      update_status_pill(d.global_status || 'SECURE');
+      update_status_pill(d.global_status || 'UNKNOWN');
 
-      // KPI: blocked
-      const blocked = d.crowdsec?.blocked_ips_count ?? 0;
-      document.getElementById('kpi-blocked').textContent = blocked;
-      document.getElementById('cs-blocked-big').textContent = blocked;
-      document.getElementById('cs-source-label').textContent = `source: ${d.crowdsec?.data_source ?? '—'}`;
-      document.getElementById('cs-community-label').textContent = `threat intel communautaire: ${(d.crowdsec?.community_blocklist_count ?? 0).toLocaleString('fr-FR')} IPs`;
-      document.getElementById('crowdsec-source').textContent = data_source_label(d.crowdsec?.data_source);
+      // CrowdSec : déclenchements, alertes conservées et décisions actives
+      const cs = d.crowdsec ?? {};
+
+      const triggers24h = cs.scenario_triggers_24h;
+      const retainedAlerts = cs.retained_alerts;
+      const activeDecisions = cs.active_decisions;
+
+      document.getElementById('kpi-cs-triggers').textContent =
+        triggers24h ?? '—';
+
+      const triggersSource =
+        cs.metrics?.scenario_triggers_24h ?? 'unavailable';
+
+      document.getElementById('kpi-cs-source').textContent =
+        `dernières 24 h · ${data_source_label(triggersSource)}`;
+
+      document.getElementById('cs-triggers-24h').textContent =
+        triggers24h ?? '—';
+
+      document.getElementById('cs-retained-alerts').textContent =
+        retainedAlerts ?? '—';
+
+      document.getElementById('cs-active-decisions').textContent =
+        activeDecisions ?? '—';
+
+      const csHealth = document.getElementById('crowdsec-health');
+      const operational = cs.status === 'operational';
+
+      csHealth.textContent = operational
+        ? '● OPÉRATIONNEL'
+        : (cs.status === 'degraded' ? '● DÉGRADÉ' : '● INDISPONIBLE');
+
+      csHealth.className =
+        'ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-medium border ' +
+        (operational
+          ? 'bg-green-500/10 text-green-400 border-green-500/20'
+          : 'bg-amber-500/10 text-amber-400 border-amber-500/20');
+
+      document.getElementById('cs-source-label').textContent =
+        `source: ${data_source_label(cs.data_source)} · Prometheus + LAPI`;
+
+      document.getElementById('cs-community-label').textContent =
+        `threat intel communautaire: ${
+          cs.community_blocklist_count == null
+            ? '—'
+            : cs.community_blocklist_count.toLocaleString('fr-FR') + ' décisions actives'
+        }`;
 
       // KPI: CPU
       const cpu = d.host?.cpu_percent ?? 0;
