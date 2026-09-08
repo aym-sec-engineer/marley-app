@@ -114,6 +114,7 @@ git clone https://github.com/aym-sec-engineer/marley-app.git
 cd marley-app
 cp .env.example .env   # renseigner CROWDSEC_BOUNCER_KEY et GRAFANA_ADMIN_PASSWORD
 docker network create web
+export MARLEY_IMAGE_TAG=<tag-image>
 docker compose up -d
 ```
 
@@ -124,7 +125,7 @@ docker compose up -d
 - [ ] Alerting Prometheus (Alertmanager) sur seuils CPU/RAM/certificats expirants
 - [ ] Agrégation de logs centralisée (Loki + Promtail)
 - [ ] Signature d'images (cosign) + SBOM (syft)
-- [ ] Pin des GitHub Actions par SHA plutôt que par tag
+- [x] Pin des GitHub Actions par SHA plutôt que par tag
 
 ## 👤 Auteur
 
