@@ -112,7 +112,7 @@ containerd snapshotter). Documentation à froid de la méthode de diagnostic.
 ```bash
 git clone https://github.com/aym-sec-engineer/marley-app.git
 cd marley-app
-cp .env.example .env   # renseigner GRAFANA_ADMIN_PASSWORD
+cp .env.example .env   # renseigner CROWDSEC_BOUNCER_KEY et GRAFANA_ADMIN_PASSWORD
 docker network create web
 docker compose up -d
 ```
