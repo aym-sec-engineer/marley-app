@@ -7,7 +7,7 @@ RUN apk add --no-cache gcc libffi-dev musl-dev
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt gunicorn
+RUN pip install --no-cache-dir --user --require-hashes -r requirements.txt
 
 # ═══════════════════ STAGE 2 — Runtime (minimal, sans pip/setuptools) ═══════════════════
 FROM python:3.11-alpine
