@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:v3.1
+    image: traefik:v3.1@sha256:74d72c7a1345984f186bddbabcc462b2128d0d8054177dc84afaeac4db1f0f56
     extra_hosts:
       - "host.docker.internal:host-gateway"
     container_name: traefik
@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
 
   marley-waf:
-    image: owasp/modsecurity-crs:nginx-alpine
+    image: owasp/modsecurity-crs:nginx-alpine@sha256:ec7a6dfb73382c622b70fc488fadb12b9229fd31640ed26c371174f01d2a7c99
     container_name: marley-waf
     environment:
       - BACKEND=http://marley_app:5000
@@ -72,7 +72,7 @@ services:
       - CROWDSEC_BOUNCER_KEY=${CROWDSEC_BOUNCER_KEY}
 
   node-exporter:
-    image: prom/node-exporter:v1.8.2
+    image: prom/node-exporter:v1.8.2@sha256:4032c6d5bfd752342c3e631c2f1de93ba6b86c41db6b167b9a35372c139e7706
     container_name: node-exporter
     restart: unless-stopped
     pid: host
@@ -90,7 +90,7 @@ services:
       - "9100"
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    image: gcr.io/cadvisor/cadvisor:v0.52.1@sha256:f40e65878e25c2e78ea037f73a449527a0fb994e303dc3e34cb6b187b4b91435
     container_name: cadvisor
     restart: unless-stopped
     privileged: true
@@ -106,7 +106,7 @@ services:
       - "8080"
 
   prometheus:
-    image: prom/prometheus:v2.54.1
+    image: prom/prometheus:v2.54.1@sha256:f6639335d34a77d9d9db382b92eeb7fc00934be8eae81dbc03b31cfe90411a94
     container_name: prometheus
     restart: unless-stopped
     extra_hosts:
@@ -127,7 +127,7 @@ services:
       - cadvisor
 
   grafana:
-    image: grafana/grafana:11.2.0
+    image: grafana/grafana:11.2.0@sha256:408afb9726de5122b00a2576763a8a57a3c86d5b0eff5305bc994ceb3eb96c3f
     container_name: grafana
     restart: unless-stopped
     environment:
@@ -153,7 +153,7 @@ services:
       - "traefik.docker.network=web"
     
   juice-shop:
-    image: bkimminich/juice-shop:latest
+    image: bkimminich/juice-shop:20.1.1@sha256:e68144772ebaaca0ec117b38d44903af92416793230288ef7c5437fc4f26850a
     container_name: juice-shop
     restart: unless-stopped
     networks:

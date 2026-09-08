@@ -1,5 +1,5 @@
 # ═══════════════════ STAGE 1 — Build ═══════════════════
-FROM python:3.11-alpine AS builder
+FROM python:3.11-alpine@sha256:0d55920083f1ce1e38ac292e2772f924b4f8bb4188d336c79bf66963039e6146 AS builder
 
 WORKDIR /app
 RUN apk add --no-cache gcc libffi-dev musl-dev
@@ -10,7 +10,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user --require-hashes -r requirements.txt
 
 # ═══════════════════ STAGE 2 — Runtime (minimal, sans pip/setuptools) ═══════════════════
-FROM python:3.11-alpine
+FROM python:3.11-alpine@sha256:0d55920083f1ce1e38ac292e2772f924b4f8bb4188d336c79bf66963039e6146
 
 RUN apk upgrade --no-cache
 
