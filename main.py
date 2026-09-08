@@ -511,9 +511,9 @@ def get_container_metrics() -> tuple[list[dict], bool]:
             )
 
             mem_percent = (
-                (memory / memory_limit) * 100
+                round((memory / memory_limit) * 100, 2)
                 if memory_limit > 0
-                else 0.0
+                else None
             )
 
             image = (
@@ -527,7 +527,7 @@ def get_container_metrics() -> tuple[list[dict], bool]:
                 "image": image,
                 "status": "running",
                 "cpu_percent": round(cpu_cores * 100, 2),
-                "mem_percent": round(mem_percent, 2),
+                "mem_percent": mem_percent,
                 "mem_usage_mb": round(
                     memory / (1024 * 1024),
                     1,
