@@ -152,23 +152,7 @@ CROWDSEC_SCENARIOS = [
     "crowdsecurity/nginx-req-limit-bypass",
 ]
 
-WAF_RULES = [
-    {"id": "932100", "label": "RCE: Unix Shell Code injection"},
-    {"id": "941100", "label": "XSS Attack (libinjection)"},
-    {"id": "942100", "label": "SQL Injection (libinjection)"},
-    {"id": "913100", "label": "Security Scanner User-Agent détecté"},
-    {"id": "920350", "label": "Host header invalide (IP brute)"},
-    {"id": "913101", "label": "Scanner Detection (Acunetix/Nikto)"},
-]
 
-INFO_EVENTS = [
-    ("CI/CD Deploy", "Déploiement réussi via GitHub Actions"),
-    ("Health Check", "Tous les services répondent — healthy"),
-    ("Cert Renewal", "Certificat Let's Encrypt renouvelé (Traefik)"),
-    ("Trivy Scan", "Scan de vulnérabilités terminé — 0 CRITICAL"),
-    ("System Update", "Mises à jour de sécurité appliquées (unattended-upgrades)"),
-    ("Ansible", "Playbook site.yml exécuté — état conforme"),
-]
 
 MARLEY_CONTAINERS = [
     {"name": "traefik", "role": "Reverse Proxy / TLS", "image": "traefik:v3.1"},
@@ -187,156 +171,152 @@ MARLEY_CONTAINERS = [
 # ═══════════════════════════════════════════════════════════════════
 
 def get_firewall_status() -> dict:
-    """État du pare-feu et inventaire des ports ouverts.
+    """Configuration de sécurité réseau déclarée pour le lab Marley.
 
-    En conditions réelles, cette fonction peut être étendue pour lire
-    `nft list ruleset` ou `ufw status` — ici elle reflète la
-    configuration connue et durcie du lab (source de vérité : rôle
-    Ansible 'firewall')."""
+    Cette vue décrit la configuration attendue. Elle ne prétend pas
+    constituer un contrôle runtime de nftables.
+    """
 
     return {
         "engine": Config.FIREWALL_ENGINE,
-        "status": "active",
+        "status": "configured",
+        "data_source": "configured",
         "policy": Config.FIREWALL_POLICY,
-        "ssh_port": Config.SSH_PORT,
         "open_ports": [
-            {"port": Config.SSH_PORT, "service": "SSH", "protocol": "tcp", "auth": "Ed25519, root désactivé"},
-            {"port": Config.HTTP_PORT, "service": "HTTP", "protocol": "tcp", "auth": "Redirect → HTTPS"},
-            {"port": Config.HTTPS_PORT, "service": "HTTPS", "protocol": "tcp", "auth": "TLS 1.2/1.3"},
+            {
+                "port": "custom",
+                "service": "SSH",
+                "protocol": "tcp",
+                "auth": "Ed25519, root désactivé",
+            },
+            {
+                "port": Config.HTTP_PORT,
+                "service": "HTTP",
+                "protocol": "tcp",
+                "auth": "Redirect → HTTPS",
+            },
+            {
+                "port": Config.HTTPS_PORT,
+                "service": "HTTPS",
+                "protocol": "tcp",
+                "auth": "TLS 1.2/1.3",
+            },
         ],
     }
-
 
 # ═══════════════════════════════════════════════════════════════════
 # COLLECTEURS — CrowdSec
 # ═══════════════════════════════════════════════════════════════════
 
-def _random_ip() -> str:
-    """Génère une IPv4 plausible pour les données de démonstration."""
-    first_octet = random.choice([45, 51, 78, 89, 92, 103, 134, 178, 185, 193, 203, 212])
-    return f"{first_octet}.{random.randint(1, 254)}.{random.randint(1, 254)}.{random.randint(1, 254)}"
 
 
-def _simulate_crowdsec_decisions(count: int | None = None) -> list[dict]:
-    """Jeu de données simulé — utilisé si `cscli` est indisponible
-    (ex : exécution locale hors du VPS)."""
-
-    now = datetime.now(timezone.utc)
-    n = count if count is not None else random.randint(6, 18)
-    decisions = []
-    for _ in range(n):
-        duration_h = random.randint(1, 4)
-        decisions.append({
-            "id": random.randint(1000, 9999),
-            "origin": "crowdsec",
-            "type": "ban",
-            "scope": "Ip",
-            "value": _random_ip(),
-            "scenario": random.choice(CROWDSEC_SCENARIOS),
-            "duration": f"{duration_h}h{random.randint(0, 59)}m{random.randint(0, 59)}s",
-            "until": (now + timedelta(hours=duration_h)).isoformat(),
-        })
-    return decisions
 
 
 def get_crowdsec_decisions() -> tuple[list[dict], bool]:
-    """Récupère les décisions actives via le LAPI CrowdSec (HTTP + clé bouncer).
-    Retourne (decisions, is_live) :
-      - is_live=True  → données réelles du LAPI CrowdSec
-      - is_live=False → fallback simulé (LAPI injoignable, clé absente, etc.)
+    """Récupère les décisions actives via la LAPI CrowdSec.
+
+    Retourne (decisions, is_live).
+
+    Une LAPI indisponible ne produit jamais de fausses décisions :
+    l'état devient explicitement unavailable.
     """
+
     if not Config.CROWDSEC_BOUNCER_KEY:
-        return _simulate_crowdsec_decisions(), False
+        return [], False
+
     try:
         resp = requests.get(
             f"{Config.CROWDSEC_LAPI_URL}/v1/decisions",
             headers={"X-Api-Key": Config.CROWDSEC_BOUNCER_KEY},
             timeout=Config.CROWDSEC_TIMEOUT,
         )
-        if resp.status_code == 200:
-            data = resp.json()
-            if isinstance(data, list):
-                return data, True
-            return [], True  # LAPI a répondu, aucune décision active (null)
-    except (requests.RequestException, json.JSONDecodeError):
-        pass
-    return _simulate_crowdsec_decisions(), False
-    return _simulate_crowdsec_decisions(), False
+        resp.raise_for_status()
 
+        data = resp.json()
+
+        if isinstance(data, list):
+            return data, True
+
+        # CrowdSec peut renvoyer null lorsqu'aucune décision n'est active.
+        if data is None:
+            return [], True
+
+    except (
+        requests.RequestException,
+        json.JSONDecodeError,
+        ValueError,
+    ) as exc:
+        app.logger.warning(
+            "CrowdSec LAPI unavailable: %s",
+            exc,
+        )
+
+    return [], False
 
 # ═══════════════════════════════════════════════════════════════════
 # COLLECTEURS — Événements de sécurité (flux combiné)
 # ═══════════════════════════════════════════════════════════════════
 
-def get_security_events(limit: int = 25) -> list[dict]:
-    """Construit un flux d'événements de sécurité trié par horodatage
-    décroissant, en combinant :
-      - les décisions CrowdSec réelles (ou simulées)
-      - des événements WAF ModSecurity simulés
-      - des tentatives SSH échouées simulées
-      - des événements informationnels (CI/CD, scans, etc.)
+def get_security_events(
+    limit: int = 25,
+) -> tuple[list[dict], dict]:
+    """Construit un snapshot des décisions CrowdSec actuellement actives.
+
+    Important :
+      - aucune date historique n'est inventée ;
+      - aucun événement WAF ou SSH fictif n'est généré ;
+      - les sources non instrumentées sont déclarées explicitement.
     """
 
-    now = datetime.now(timezone.utc)
-    decisions, _ = get_crowdsec_decisions()
+    decisions, crowdsec_live = get_crowdsec_decisions()
+    observed_at = datetime.now(timezone.utc).isoformat()
+
+    sources = {
+        "crowdsec": "live" if crowdsec_live else "unavailable",
+        "waf": "not_instrumented",
+        "ssh": "not_instrumented",
+        "system": "not_instrumented",
+    }
+
+    if not crowdsec_live:
+        return [], {
+            "data_source": "unavailable",
+            "sources": sources,
+            "semantics": "active_decisions_snapshot",
+        }
+
     events: list[dict] = []
 
-    # 1. Décisions CrowdSec → événements "ban"
-    for d in decisions[: max(1, limit // 2)]:
-        ts = now - timedelta(minutes=random.randint(1, 720))
+    for decision in decisions[:limit]:
+        decision_type = str(
+            decision.get("type", "ban")
+        ).upper()
+
         events.append({
-            "timestamp": ts.isoformat(),
+            "timestamp": observed_at,
             "severity": "high",
-            "source_ip": d.get("value", _random_ip()),
-            "event_type": "CrowdSec Ban",
-            "scenario": d.get("scenario", random.choice(CROWDSEC_SCENARIOS)),
-            "message": f"IP bannie — scénario {d.get('scenario', 'comportement suspect')}",
-            "action": "DROP (nftables)",
+            "source_ip": decision.get("value", "—"),
+            "event_type": "CrowdSec Active Decision",
+            "scenario": decision.get(
+                "scenario",
+                "unknown",
+            ),
+            "message": (
+                "Décision active observée via la LAPI CrowdSec"
+            ),
+            "action": decision_type,
+            "origin": decision.get(
+                "origin",
+                "unknown",
+            ),
+            "data_source": "live",
         })
 
-    # 2. Blocages WAF (ModSecurity)
-    for _ in range(random.randint(5, 9)):
-        ts = now - timedelta(minutes=random.randint(1, 1440))
-        rule = random.choice(WAF_RULES)
-        events.append({
-            "timestamp": ts.isoformat(),
-            "severity": "high",
-            "source_ip": _random_ip(),
-            "event_type": "WAF Block",
-            "scenario": f"ModSecurity Rule {rule['id']}",
-            "message": rule["label"],
-            "action": "403 Forbidden",
-        })
-
-    # 3. Échecs d'authentification SSH
-    for _ in range(random.randint(4, 8)):
-        ts = now - timedelta(minutes=random.randint(1, 1440))
-        events.append({
-            "timestamp": ts.isoformat(),
-            "severity": "warning",
-            "source_ip": _random_ip(),
-            "event_type": "SSH Auth Failure",
-            "scenario": "crowdsecurity/ssh-bf",
-            "message": f"Échec d'authentification sur le port {Config.SSH_PORT}",
-            "action": "Logged → fail2ban",
-        })
-
-    # 4. Événements informationnels
-    for label, message in random.sample(INFO_EVENTS, k=min(3, len(INFO_EVENTS))):
-        ts = now - timedelta(minutes=random.randint(1, 1440))
-        events.append({
-            "timestamp": ts.isoformat(),
-            "severity": "info",
-            "source_ip": "127.0.0.1",
-            "event_type": label,
-            "scenario": "-",
-            "message": message,
-            "action": "OK",
-        })
-
-    events.sort(key=lambda e: e["timestamp"], reverse=True)
-    return events[:limit]
-
+    return events, {
+        "data_source": "live",
+        "sources": sources,
+        "semantics": "active_decisions_snapshot",
+    }
 
 # ═══════════════════════════════════════════════════════════════════
 # COLLECTEURS — Métriques système & conteneurs
@@ -395,8 +375,7 @@ def _calculate_cpu_percent(stats: dict) -> float:
 
 def _simulate_container_metrics() -> list[dict]:
     """Jeu de données simulé pour les conteneurs de la stack Marley —
-    utilisé si le socket Docker n'est pas accessible depuis ce conteneur
-    (choix de durcissement assumé)."""
+    utilisé uniquement si Prometheus/cAdvisor est indisponible."""
 
     metrics = []
     for c in MARLEY_CONTAINERS:
@@ -765,15 +744,25 @@ def index():
 
 @app.route("/api/v1/status")
 def api_status():
-    """Statut global agrégé — alimente le header et les KPIs."""
+    """Statut agrégé avec provenance explicite des données."""
 
     decisions, decisions_live = get_crowdsec_decisions()
     host = get_host_metrics()
-    local_decisions = [d for d in decisions if d.get("origin") != "CAPI"]
-    blocked_count = len(local_decisions)
-    community_blocklist_count = len(decisions) - blocked_count
 
-    if blocked_count >= Config.THRESHOLD_ALERT:
+    local_decisions = [
+        d
+        for d in decisions
+        if d.get("origin") != "CAPI"
+    ]
+
+    blocked_count = len(local_decisions)
+    community_blocklist_count = (
+        len(decisions) - blocked_count
+    )
+
+    if not decisions_live:
+        global_status = "UNKNOWN"
+    elif blocked_count >= Config.THRESHOLD_ALERT:
         global_status = "ALERT"
     elif blocked_count >= Config.THRESHOLD_ELEVATED:
         global_status = "ELEVATED"
@@ -782,21 +771,45 @@ def api_status():
 
     return jsonify({
         "global_status": global_status,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(
+            timezone.utc
+        ).isoformat(),
+
         "firewall": get_firewall_status(),
+
         "waf": {
             "engine": Config.WAF_ENGINE,
             "ruleset": Config.WAF_RULESET,
             "mode": Config.WAF_MODE,
-            "status": "active",
+            "status": "configured",
+            "data_source": "configured",
         },
+
         "crowdsec": {
-            "status": "active",
-            "blocked_ips_count": blocked_count,
-            "community_blocklist_count": community_blocklist_count,
-            "data_source": "live" if decisions_live else "simulated",
+            "status": (
+                "reachable"
+                if decisions_live
+                else "unavailable"
+            ),
+            "blocked_ips_count": (
+                blocked_count
+                if decisions_live
+                else None
+            ),
+            "community_blocklist_count": (
+                community_blocklist_count
+                if decisions_live
+                else None
+            ),
+            "data_source": (
+                "live"
+                if decisions_live
+                else "unavailable"
+            ),
         },
+
         "host": host,
+
         "app": {
             "name": Config.APP_NAME,
             "version": Config.APP_VERSION,
@@ -804,21 +817,29 @@ def api_status():
         },
     })
 
-
 @app.route("/api/v1/events")
 def api_events():
-    """Flux d'événements de sécurité (Live Security Logs)."""
+    """Snapshot des événements actuellement observables."""
 
-    limit = request.args.get("limit", default=25, type=int)
+    limit = request.args.get(
+        "limit",
+        default=25,
+        type=int,
+    )
     limit = max(1, min(limit, 100))
-    events = get_security_events(limit=limit)
+
+    events, metadata = get_security_events(
+        limit=limit
+    )
 
     return jsonify({
         "events": events,
         "count": len(events),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "observed_at": datetime.now(
+            timezone.utc
+        ).isoformat(),
+        **metadata,
     })
-
 
 @app.route("/api/v1/containers")
 def api_containers():
@@ -868,42 +889,41 @@ def api_timeline():
 
 @app.route("/api/v1/settings")
 def api_settings():
-    """Paramètres de configuration en lecture seule — allowlist
-    explicite : seules les valeurs non-sensibles listées ici sont
-    exposées, jamais SECRET_KEY, CROWDSEC_BOUNCER_KEY ou toute future
-    valeur sensible ajoutée à Config sans mise à jour de cette liste."""
+    """Architecture publique volontairement sanitizée.
+
+    Aucun port d'administration, secret, endpoint interne,
+    timeout opérationnel ou seuil de détection n'est exposé.
+    """
 
     return jsonify({
         "app": {
             "name": Config.APP_NAME,
             "version": Config.APP_VERSION,
             "environment": Config.ENVIRONMENT,
-            "debug": Config.DEBUG,
         },
+
         "network": {
-            "ssh_port": Config.SSH_PORT,
-            "http_port": Config.HTTP_PORT,
-            "https_port": Config.HTTPS_PORT,
+            "segmentation": "Docker networks",
             "firewall_engine": Config.FIREWALL_ENGINE,
             "firewall_policy": Config.FIREWALL_POLICY,
+            "ssh_hardening": (
+                "Ed25519 keys, root login disabled"
+            ),
         },
+
         "waf": {
             "engine": Config.WAF_ENGINE,
             "ruleset": Config.WAF_RULESET,
             "mode": Config.WAF_MODE,
         },
+
         "crowdsec": {
-            "cscli_bin": Config.CSCLI_BIN,
-            "cscli_timeout": Config.CSCLI_TIMEOUT,
-            "cscli_use_sudo": Config.CSCLI_USE_SUDO,
-            "timeout": Config.CROWDSEC_TIMEOUT,
-        },
-        "thresholds": {
-            "elevated": Config.THRESHOLD_ELEVATED,
-            "alert": Config.THRESHOLD_ALERT,
+            "enabled": True,
+            "integration": (
+                "LAPI + nftables bouncer"
+            ),
         },
     })
-
 
 @app.route("/health")
 def health():
