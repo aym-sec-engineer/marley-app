@@ -1,0 +1,67 @@
+# Git / metadata
+.git
+.git/**
+.gitignore
+
+# Secrets / runtime state
+.env
+.env.*
+letsencrypt
+letsencrypt/**
+*.pem
+**/*.pem
+*.key
+**/*.key
+*.crt
+**/*.crt
+
+# Python caches / local environments
+__pycache__
+**/__pycache__/**
+*.pyc
+**/*.pyc
+*.pyo
+**/*.pyo
+.venv
+.venv/**
+venv
+venv/**
+
+# Backups / temporary files
+*.bak
+**/*.bak
+*.bak*
+**/*.bak*
+*.backup
+**/*.backup
+*.before-*
+**/*.before-*
+*.tmp
+**/*.tmp
+*~
+**/*~
+
+# Reports / local artifacts
+dast-reports
+dast-reports/**
+
+# Local caches / test artifacts
+*.log
+**/*.log
+.coverage
+.pytest_cache
+.pytest_cache/**
+.mypy_cache
+.mypy_cache/**
+.ruff_cache
+.ruff_cache/**
+
+# Docker / deployment files not required at runtime
+docker-compose*.yml
+docker-compose*.yaml
+
+# Repository-only documentation / metadata
+README.md
+INCIDENTS.md
+compliance
+compliance/**
