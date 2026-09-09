@@ -1,134 +1,316 @@
-# 🛡️ Marley — infrastructure DevSecOps de laboratoire/portfolio conçue selon des pratiques de production
+# 🛡️ Marley — laboratoire DevSecOps auto-hébergé
 
-> Lab d'infrastructure auto-hébergé, construit pour maîtriser concrètement la chaîne
-> complète DevSecOps : durcissement système, reverse proxy sécurisé, défense en
-> profondeur réseau/applicative, CI/CD avec supply chain security, observabilité,
-> et tests de sécurité offensifs (DAST).
+Marley est une infrastructure DevSecOps de laboratoire/portfolio construite sur
+un VPS Ubuntu afin d'expérimenter une chaîne proche de problématiques de
+production : exposition HTTPS, défense en profondeur, isolation réseau,
+observabilité, CI/CD et contrôles de sécurité automatisés.
 
-**Stack** : Ubuntu 24.04 LTS · Traefik v3 · ModSecurity (OWASP CRS) · CrowdSec ·
-Flask · Docker Compose · GitHub Actions · Trivy · Gitleaks · Prometheus · Grafana · OWASP ZAP
+L'objectif du projet n'est pas de présenter cette architecture comme une
+plateforme de production complète, mais de documenter des choix techniques,
+leurs limites, les incidents rencontrés et les contrôles permettant de les
+vérifier.
 
-**Domaine** : `marley.aymrajao.dev` — VPS OVH
+**Stack** : Ubuntu 24.04 LTS · Traefik v3 · ModSecurity + OWASP CRS · CrowdSec ·
+Flask/Gunicorn · Docker Compose · GitHub Actions · Semgrep · Gitleaks · Trivy ·
+Prometheus · Grafana · node-exporter · cAdvisor · OWASP ZAP
+
+**Application** : `marley.aymrajao.dev` — VPS OVH
 
 ---
 
 ## 📐 Architecture
+
+~~~text
                          Internet
-                             │
-                ┌────────────▼────────────┐
-                │   Traefik v3 (reverse   │  :80 → :443 redirect
-                │   proxy + TLS Let's     │  Let's Encrypt (TLS challenge)
-                │   Encrypt)              │
-                └────────────┬────────────┘
-                             │  réseau "web"
-                ┌────────────▼────────────┐
-                │  ModSecurity WAF        │  OWASP CRS, Paranoia Level 1
-                │  (owasp/modsecurity-crs)│
-                └────────────┬────────────┘
-                             │  réseau "backend" (internal: true)
-                ┌────────────▼────────────┐
-                │  marley_app (Flask)     │  Dashboard sécurité temps réel
-                │  Dockerfile multi-stage │  utilisateur non-root
-                └─────────────────────────┘
+                            │
+                    HTTP :80 / HTTPS :443
+                            │
+                 ┌──────────▼──────────┐
+                 │     Traefik v3      │
+                 │ reverse proxy + TLS │
+                 │   Let's Encrypt     │
+                 └──────────┬──────────┘
+                            │
+                         web network
+                            │
+                 ┌──────────▼──────────┐
+                 │   ModSecurity WAF   │
+                 │     OWASP CRS       │
+                 │  Paranoia Level 1   │
+                 └──────────┬──────────┘
+                            │
+                      backend network
+                       internal: true
+                            │
+                 ┌──────────▼──────────┐
+                 │     marley_app      │
+                 │   Flask / Gunicorn  │
+                 │     non-root        │
+                 └──────────┬──────────┘
+                            │
+                     monitoring network
+                       internal: true
+                            │
+             ┌──────────────┼──────────────┐
+             │              │              │
+        Prometheus      cAdvisor     node-exporter
+             │
+          Grafana
+~~~
 
+Services complémentaires :
 
-**Réseau "monitoring" (internal)**
-├── node-exporter (métriques hôte)
-├── cAdvisor (métriques conteneurs)
-├── Prometheus (scrape 15s)
-└── Grafana (dashboards, exposé via Traefik sur sous-domaine dédié)
-
-
-**Réseau "backend" (internal, isolé)**
-└── juice-shop (cible DAST, jamais exposée)
-
-
-**Couche réseau système (hôte)**
-├── CrowdSec + bouncer nftables (L3/L4 — bruteforce SSH, scan agressif)
-└── Durcissement hôte (SSH, sysctl, firewall)
-
-
----
-
-
-## ✅ Phases réalisées
-
-| Phase | Contenu | Statut |
-|---|---|---|
-| 0 | Socle OS durci (SSH, sysctl, utilisateurs, firewall hôte) | ✅ |
-| 1 | Traefik v3 — reverse proxy, TLS automatique Let's Encrypt | ✅ |
-| 2 | ModSecurity WAF — OWASP CRS, filtrage L7 | ✅ |
-| 3 | CrowdSec + bouncer nftables — défense L3/L4 | ✅ |
-| 4 | Application Flask — dashboard sécurité | ✅ |
-| 5 | Isolation réseau Docker (`web` / `backend` / `monitoring`) | ✅ |
-| 6 | CI/CD GitHub Actions — Gitleaks, build, Trivy bloquant, SBOM CycloneDX, push DockerHub, déploiement SSH | ✅ |
-| 7 | Observabilité — Prometheus, Grafana, node-exporter, cAdvisor | ✅ |
-| 8 | DAST — OWASP ZAP (baseline + full scan) contre Juice Shop isolé | ✅ |
+- `juice-shop` est une cible DAST isolée sur `backend`, sans port hôte publié
+  ni route Traefik.
+- CrowdSec fonctionne au niveau de l'hôte avec un bouncer nftables.
+- Grafana est exposé séparément via Traefik.
+- `backend` et `monitoring` sont déclarés `internal: true`.
 
 ---
 
-## 🔒 Points de sécurité notables
+## 🔒 Contrôles de sécurité
 
-- **Isolation réseau stricte** : `backend` et `monitoring` marqués `internal: true` —
-  Les réseaux Docker backend et monitoring sont déclarés internes afin de limiter leur
-  connectivité externe et de réduire le périmètre réseau accessible en cas de compromission.
-- **Défense en profondeur** : CrowdSec (L3/L4, comportemental, décisions de
-  bannissement appliquées via le bouncer nftables) + ModSecurity (L7, inspection
-  requête par requête avec OWASP CRS).
-- **Supply chain** : scan Gitleaks des secrets, scan Trivy bloquant
-  (CVE CRITICAL/HIGH) avant tout push DockerHub, génération d'un SBOM CycloneDX
-  de l'image et conservation comme artefact GitHub Actions pendant 30 jours.
-  Les GitHub Actions utilisées par le pipeline sont verrouillées par commit SHA.
-- **Dockerfile multi-stage** : `pip`/`setuptools`/`wheel` sont absents du
-  runtime final. Ce durcissement fait suite à plusieurs détections Trivy documentées
-  dans `INCIDENTS.md` et réduit les composants inutiles présents à l'exécution.
-- **DAST isolé** : Juice Shop tourne exclusivement sur le réseau `backend`, sans
-  label Traefik ni port publié — cible de test totalement inaccessible depuis
-  l'extérieur.
-- **Gestion des secrets** : aucun secret en clair dans le repo (`.gitignore` strict
-  sur `.env`, `letsencrypt/`) — GitHub Secrets chiffrés pour la CI/CD.
+### Hôte et réseau
 
-## 📊 Observabilité
+- durcissement SSH, sysctl et firewall hôte ;
+- CrowdSec + bouncer nftables pour les décisions de remédiation réseau ;
+- segmentation Docker entre `web`, `backend` et `monitoring` ;
+- Juice Shop volontairement non exposé publiquement.
 
-- **Prometheus** scrape `node-exporter` (métriques hôte), `cAdvisor` (métriques par
-  conteneur) et `traefik` (métriques reverse proxy) toutes les 15 secondes.
-- **Grafana** expose deux dashboards : *Node Exporter Full* (vue infra globale) et
-  *Docker Monitoring* (consommation par conteneur).
+### Reverse proxy et application
 
-## 🧪 DAST
+- TLS Let's Encrypt via Traefik ;
+- ModSecurity + OWASP Core Rule Set devant l'application ;
+- application Flask exécutée par Gunicorn sous un utilisateur non-root ;
+- healthcheck applicatif local ;
+- politique HTTP comprenant HSTS, `X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` et CSP ;
+- JavaScript exécutable servi localement ; la CSP n'autorise les scripts que
+  depuis `'self'` ;
+- les données dynamiques injectées dans les fragments HTML du dashboard sont
+  encodées avant rendu.
 
-Scan `zap-baseline.py` (passif) puis `zap-full-scan.py` (actif) contre
-Juice Shop, isolé sur le réseau interne. Les rapports générés sont conservés dans
-`dast-reports/` afin de documenter les tests réalisés.
+La CSP conserve actuellement `style-src 'unsafe-inline'` pour certains styles
+dynamiques. Les Google Fonts restent chargées depuis `fonts.googleapis.com` /
+`fonts.gstatic.com`.
 
-## 🐛 Incidents & debug
+---
 
-Voir [`INCIDENTS.md`](./INCIDENTS.md) — 9 incidents réels rencontrés et résolus
-durant la construction (crash loops, CVE, mismatchs de secrets CI/CD, migration
-containerd snapshotter). Documentation à froid de la méthode de diagnostic.
+## 🔁 CI/CD et supply chain
 
-## 🚀 Quickstart (reproduction locale)
+Le workflow GitHub Actions exécute les contrôles principaux dans cet ordre :
 
-```bash
+~~~text
+Checkout
+   │
+   ├── Gitleaks — secret scanning
+   │
+   ├── Semgrep — SAST bloquant
+   │
+   ├── Build image
+   │
+   ├── Trivy — CRITICAL/HIGH bloquants
+   │
+   ├── CycloneDX SBOM
+   │
+   ├── Trivy SARIF
+   │
+   ├── Push DockerHub (main)
+   │
+   └── Déploiement SSH (main)
+~~~
+
+### Semgrep
+
+Semgrep est exécuté comme gate CI bloquant. L'image Semgrep utilisée par le
+workflow est verrouillée par digest.
+
+Trois règles sont actuellement exclues après revue manuelle du contexte
+d'architecture : transport HTTP interne vers Prometheus, entrypoint Flask de
+développement écoutant sur `0.0.0.0`, et SRI signalé sur un favicon SVG
+embarqué via `data:`.
+
+La justification et les conditions de réévaluation de ces exceptions sont
+documentées dans [`semgrep-policy.md`](./semgrep-policy.md).
+
+### Trivy et SBOM
+
+L'image applicative est scannée avant push. Les vulnérabilités
+`CRITICAL` / `HIGH` détectées par le gate configuré font échouer cette étape.
+
+Trivy génère également :
+
+- un rapport SARIF pour GitHub Security ;
+- un SBOM CycloneDX conservé comme artefact GitHub Actions pendant 30 jours.
+
+Le projet ne met actuellement en œuvre **ni signature d'image, ni attestation
+de provenance**.
+
+### Dépendances et images
+
+- les GitHub Actions utilisées par le pipeline sont verrouillées par commit SHA ;
+- les images tierces déclarées dans Compose sont verrouillées par digest ;
+- les dépendances Python sont installées depuis un `requirements.txt` généré
+  avec hashes et `pip --require-hashes` ;
+- les dépendances frontend exécutées dans le navigateur sont servies localement ;
+- l'image applicative déployée utilise un tag dérivé du commit Git
+  (`GITHUB_SHA` tronqué à 8 caractères) et Compose refuse son démarrage si
+  `MARLEY_IMAGE_TAG` n'est pas explicitement défini.
+
+Ces mesures réduisent la dérive de dépendances, mais le build n'est pas présenté
+comme bit-for-bit reproductible : certaines opérations de build restent
+dépendantes de dépôts externes, notamment `apk upgrade`.
+
+---
+
+## 📊 Observabilité et provenance des données
+
+Prometheus collecte notamment les métriques de `node-exporter`, `cAdvisor` et
+Traefik. Grafana fournit les vues d'observabilité infrastructure et conteneurs.
+
+Le dashboard Marley agrège plusieurs types de données. Leur provenance est
+explicitement distinguée lorsque nécessaire :
+
+- `live` : donnée collectée depuis une source runtime disponible ;
+- `configured` : valeur issue de la configuration de l'application ;
+- `recorded_scan` : résultat de scan historisé ;
+- `not_instrumented` : composant présent mais sans télémétrie correspondante ;
+- `unavailable` : source attendue indisponible ;
+- `simulated` : fallback encore utilisé par certains collecteurs lorsque leur
+  source runtime n'est pas disponible.
+
+Une valeur simulée ou indisponible ne doit donc pas être interprétée comme une
+observation réelle de l'infrastructure.
+
+### CrowdSec
+
+Le dashboard distingue notamment :
+
+- les décisions locales actives au moment de la collecte ;
+- les alertes locales conservées ;
+- les déclenchements de scénarios sur une fenêtre de 24 h lorsque la métrique
+  Prometheus correspondante est disponible.
+
+Ces valeurs ne représentent pas un compteur historique générique
+« d'attaques bloquées ». Les données CAPI de CrowdSec ne sont pas assimilées à
+des attaques observées contre Marley.
+
+---
+
+## 🧪 Security Evidence / DAST
+
+La section **Security Evidence** distingue les preuves enregistrées de l'état
+runtime.
+
+Le fichier `compliance/compliance.json` contient actuellement des résultats
+historisés de scans Trivy et OWASP ZAP. Ils sont exposés comme
+`recorded_scan`, pas comme résultats live.
+
+La politique d'en-têtes HTTP affichée par l'API correspond à la configuration
+applicative (`configured`) et ne constitue pas, à elle seule, une vérification
+externe du chemin HTTP complet.
+
+OWASP Juice Shop sert de cible DAST isolée. Les résultats enregistrés dans le
+repository constituent une preuve historique et ne garantissent pas l'état
+actuel de l'application.
+
+---
+
+## 🐳 Conteneur applicatif
+
+Le Dockerfile utilise deux stages.
+
+Le runtime :
+
+- exécute l'application avec Gunicorn ;
+- utilise un utilisateur `marley` non-root ;
+- retire `pip`, `setuptools` et `wheel` du runtime final ;
+- possède un healthcheck HTTP local ;
+- ne nécessite pas l'accès au socket Docker.
+
+Le retrait des outils de packaging du runtime fait notamment suite à des
+vulnérabilités rencontrées et documentées pendant la construction du projet.
+
+---
+
+## 🐛 Incidents et diagnostic
+
+[`INCIDENTS.md`](./INCIDENTS.md) documente les principaux incidents rencontrés
+pendant la construction du projet : crash loops, vulnérabilités de dépendances,
+problèmes de déploiement et autres erreurs de configuration.
+
+L'objectif est de conserver la démarche de diagnostic et les corrections
+appliquées, plutôt que de ne montrer que l'état final fonctionnel.
+
+---
+
+## 🚀 Quickstart
+
+Pré-requis : Docker Engine avec Compose, ainsi que le réseau Docker externe
+`web`.
+
+~~~bash
 git clone https://github.com/aym-sec-engineer/marley-app.git
 cd marley-app
-cp .env.example .env   # renseigner CROWDSEC_BOUNCER_KEY et GRAFANA_ADMIN_PASSWORD
+
+cp .env.example .env
+# Renseigner au minimum les secrets/configurations nécessaires.
+
 docker network create web
+
 export MARLEY_IMAGE_TAG=<tag-image>
 docker compose up -d
-```
+~~~
+
+`MARLEY_IMAGE_TAG` est volontairement obligatoire afin d'éviter qu'un
+déploiement utilise implicitement une image `latest`.
+
+Le déploiement complet dépend également de composants hôte qui ne sont pas
+provisionnés par ce repository, notamment CrowdSec/nftables et la configuration
+système du VPS.
+
+---
+
+## ⚠️ Limites actuelles
+
+Ce projet reste un laboratoire mono-VPS et non une plateforme hautement
+disponible.
+
+Limites connues :
+
+- absence de signature / attestation d'image ;
+- absence d'Alertmanager ;
+- absence de centralisation de logs type Loki ;
+- certains collecteurs possèdent encore un fallback simulé ;
+- certaines sources de sécurité sont volontairement `not_instrumented` ;
+- `style-src 'unsafe-inline'` reste nécessaire dans la CSP ;
+- Google Fonts reste une dépendance frontend externe ;
+- cAdvisor fonctionne avec des privilèges élevés pour collecter la télémétrie
+  des conteneurs ;
+- le build n'est pas garanti bit-for-bit reproductible ;
+- le repository ne provisionne pas intégralement le VPS depuis zéro.
+
+---
 
 ## 🗺️ Roadmap
 
-- [ ] SAST applicatif (Semgrep) intégré en CI
-- [ ] Scan de conformité CIS Benchmark (Docker Bench for Security)
-- [ ] Alerting Prometheus (Alertmanager) sur seuils CPU/RAM/certificats expirants
-- [ ] Agrégation de logs centralisée (Loki + Promtail)
-- [x] SBOM CycloneDX généré par Trivy et conservé comme artefact CI
-- [ ] Signature / attestation d'images (cosign)
-- [x] Pin des GitHub Actions par SHA plutôt que par tag
+- [x] Gitleaks — secret scanning CI
+- [x] Semgrep — SAST bloquant avec exceptions documentées
+- [x] Trivy — scan d'image bloquant sur CRITICAL/HIGH
+- [x] SBOM CycloneDX conservé comme artefact CI
+- [x] GitHub Actions verrouillées par commit SHA
+- [x] Images tierces Compose verrouillées par digest
+- [ ] Signature / attestation d'images
+- [ ] Alertmanager
+- [ ] Centralisation des logs
+- [ ] Suppression des derniers fallbacks simulés
+- [ ] Réduction de `style-src 'unsafe-inline'`
+- [ ] Provisionnement reproductible de l'hôte
+
+---
 
 ## 👤 Auteur
 
-**Aym** — En Mastère Cybersécurité & Réseaux, reconversion vers DevSecOps/Cloud
-Security. CompTIA Security+ en préparation. [LinkedIn](https://www.linkedin.com/in/aymrajao/) · [GitHub](https://github.com/aym-sec-engineer)
+**Aym** — parcours orienté DevOps / DevSecOps / Cloud Security.
+
+Projet réalisé comme laboratoire d'apprentissage et portfolio technique.
