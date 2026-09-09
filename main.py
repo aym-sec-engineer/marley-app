@@ -89,16 +89,18 @@ app.json.sort_keys = False
 # ═══════════════════════════════════════════════════════════════════
 
 def get_security_headers() -> dict:
-    """Retourne le dict des en-têtes de sécurité HTTP appliqués à
-    chaque réponse — source unique de vérité, utilisée à la fois par
-    `apply_security_headers()` (runtime) et par la route
-    `/api/v1/compliance` (affichage dashboard), pour garantir que
-    l'UI reflète toujours exactement ce qui est réellement appliqué."""
+    """Retourne la politique d'en-têtes HTTP configurée par l'application.
+
+    Cette fonction est la source de configuration utilisée par
+    `apply_security_headers()`. L'endpoint `/api/v1/compliance` expose
+    cette politique comme preuve de configuration applicative ; il ne
+    prétend pas constituer une observation indépendante de la réponse
+    HTTP reçue par un client externe.
+    """
 
     return {
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
-        "X-XSS-Protection": "1; mode=block",
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=()",
         "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
@@ -809,35 +811,44 @@ COMPLIANCE_FILE_PATH = os.path.join(os.path.dirname(__file__), "compliance", "co
 
 
 def get_compliance_scans() -> tuple[dict, bool]:
-    """Lit les résultats des derniers scans Trivy et ZAP depuis un
-    fichier JSON déposé sur le VPS (monté en volume lecture-seule,
-    voir docker-compose.yml : ./compliance:/app/compliance:ro).
+    """Lit les derniers résultats Trivy/ZAP enregistrés sur le VPS.
 
-    Ce fichier est mis à jour par la CI GitHub Actions ou manuellement
-    sur le VPS — aucun rebuild du conteneur n'est nécessaire pour que
-    le dashboard reflète un nouveau scan.
+    Le fichier monté en lecture seule constitue une preuve de scan
+    enregistrée : sa présence ne signifie pas que le scan est "live"
+    ni qu'il décrit nécessairement l'artefact actuellement déployé.
 
-    Retourne (data, is_live) :
-      - is_live=True  → fichier lu avec succès
-      - is_live=False → fichier absent/invalide, fallback par défaut
+    Retourne (data, available) :
+      - available=True  → preuve enregistrée lisible et structurée
+      - available=False → preuve absente ou invalide
+
+    En cas d'absence, les métriques restent inconnues (`None`) afin de
+    ne jamais transformer "pas de preuve" en faux résultat à zéro.
     """
 
     try:
         with open(COMPLIANCE_FILE_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-        if "trivy" in data and "zap" in data:
+        if isinstance(data.get("trivy"), dict) and isinstance(data.get("zap"), dict):
             return data, True
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
 
     return {
         "trivy": {
-            "scan_date": None, "target": "—",
-            "critical": 0, "high": 0, "medium": 0, "low": 0, "unknown": 0,
+            "scan_date": None,
+            "target": None,
+            "critical": None,
+            "high": None,
+            "medium": None,
+            "low": None,
+            "unknown": None,
         },
         "zap": {
-            "scan_date": None, "target": "—",
-            "fail_new": 0, "warn_new": 0, "pass": 0,
+            "scan_date": None,
+            "target": None,
+            "fail_new": None,
+            "warn_new": None,
+            "pass": None,
         },
     }, False
 
@@ -1015,15 +1026,29 @@ def api_network():
 
 @app.route("/api/v1/compliance")
 def api_compliance():
-    """Résultats des derniers scans de sécurité (Trivy, ZAP) et liste
-    des en-têtes HTTP de sécurité effectivement appliqués."""
+    """Expose des preuves de sécurité avec leur provenance explicite.
 
-    scans, is_live = get_compliance_scans()
+    Trivy/ZAP sont des résultats de scans enregistrés, pas une
+    télémétrie temps réel. Les en-têtes représentent la politique
+    configurée par Flask ; leur présence côté client doit être vérifiée
+    indépendamment sur la réponse HTTP publique.
+    """
+
+    scans, scans_available = get_compliance_scans()
     return jsonify({
         "trivy": scans["trivy"],
         "zap": scans["zap"],
+        "scan_evidence": {
+            "available": scans_available,
+            "source": "recorded_scan" if scans_available else "unavailable",
+        },
         "security_headers": get_security_headers(),
-        "data_source": "live" if is_live else "default",
+        "security_headers_evidence": {
+            "source": "configured",
+            "scope": "application_response_policy",
+            "runtime_verification": False,
+        },
+        "data_source": "recorded_scan" if scans_available else "unavailable",
     })
 
 

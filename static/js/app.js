@@ -441,12 +441,15 @@
       const trivy = d.trivy ?? {};
       const zap = d.zap ?? {};
       const headers = d.security_headers ?? {};
+      const scanEvidence = d.scan_evidence ?? {};
+      const headersEvidence = d.security_headers_evidence ?? {};
+      const scansAvailable = scanEvidence.available === true;
 
       // Trivy
       document.getElementById('trivy-target').textContent = trivy.target || '—';
       document.getElementById('trivy-date').textContent = trivy.scan_date
-        ? `Dernier scan : ${new Date(trivy.scan_date).toLocaleString('fr-FR')}`
-        : 'Aucun scan enregistré';
+        ? `Scan enregistré : ${new Date(trivy.scan_date).toLocaleString('fr-FR')} · ${scanEvidence.source ?? 'recorded_scan'}`
+        : 'Preuve de scan indisponible';
 
       const trivySeverities = [
         { key: 'critical', label: 'CRITICAL', cls: 'text-red-400 border-red-500/20 bg-red-500/10' },
@@ -457,7 +460,7 @@
       ];
       document.getElementById('trivy-grid').innerHTML = trivySeverities.map(s => `
         <div class="rounded-xl border p-3 text-center ${s.cls}">
-          <p class="font-display text-xl font-bold">${trivy[s.key] ?? 0}</p>
+          <p class="font-display text-xl font-bold">${scansAvailable && trivy[s.key] != null ? trivy[s.key] : '—'}</p>
           <p class="text-[9px] font-mono uppercase tracking-widest mt-1 opacity-80">${s.label}</p>
         </div>
       `).join('');
@@ -465,8 +468,8 @@
       // ZAP
       document.getElementById('zap-target').textContent = zap.target || '—';
       document.getElementById('zap-date').textContent = zap.scan_date
-        ? `Dernier scan : ${new Date(zap.scan_date).toLocaleString('fr-FR')}`
-        : 'Aucun scan enregistré';
+        ? `Scan enregistré : ${new Date(zap.scan_date).toLocaleString('fr-FR')} · ${scanEvidence.source ?? 'recorded_scan'}`
+        : 'Preuve de scan indisponible';
 
       const zapMetrics = [
         { key: 'fail_new', label: 'FAIL-NEW', cls: 'text-red-400 border-red-500/20 bg-red-500/10' },
@@ -475,7 +478,7 @@
       ];
       document.getElementById('zap-grid').innerHTML = zapMetrics.map(m => `
         <div class="rounded-xl border p-3 text-center ${m.cls}">
-          <p class="font-display text-xl font-bold">${zap[m.key] ?? 0}</p>
+          <p class="font-display text-xl font-bold">${scansAvailable && zap[m.key] != null ? zap[m.key] : '—'}</p>
           <p class="text-[9px] font-mono uppercase tracking-widest mt-1 opacity-80">${m.label}</p>
         </div>
       `).join('');
@@ -486,7 +489,7 @@
         <li class="px-3 py-2.5 rounded-xl bg-cyber-surface-2 border border-cyber-border">
           <div class="flex items-center justify-between gap-3 mb-1">
             <span class="font-mono text-[11px] text-cyan-300">${name}</span>
-            <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-green-500/10 text-green-400 border border-green-500/20 flex-shrink-0">APPLIQUÉ</span>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex-shrink-0">${headersEvidence.source === 'configured' ? 'CONFIGURÉ' : 'SOURCE INCONNUE'}</span>
           </div>
           <p class="font-mono text-[10px] text-slate-500 break-all">${value}</p>
         </li>
