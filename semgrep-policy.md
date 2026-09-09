@@ -2,45 +2,34 @@
 
 Marley runs the Semgrep Community ruleset as a blocking CI control.
 
-The source files remain in scope for the rest of the ruleset. Three rule IDs
-are excluded because the findings were manually reviewed against the deployed
-architecture.
+The Semgrep engine image used by CI is pinned by digest. The Community
+ruleset is currently resolved dynamically through `--config auto`, so the
+ruleset itself is not presented as bit-for-bit reproducible.
 
-## Accepted architectural findings
+## Internal HTTP transport to Prometheus
 
-### HTTP transport to Prometheus
+Marley intentionally uses HTTP between the Flask application and Prometheus
+on the private Docker `monitoring` network.
 
-Excluded rule:
+The Semgrep rule:
 
 `python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http`
 
-Prometheus is reached through HTTP on the private Docker monitoring network.
-This is an internal service-to-service connection, not a public application
-endpoint.
+is therefore suppressed only on the exact `requests.get()` calls that query
+the internal Prometheus service.
 
-### Flask development entrypoint
+The rule is not globally excluded from the repository. A future HTTP request
+matching the same rule elsewhere remains visible to Semgrep.
 
-Excluded rule:
+These local suppressions must be reconsidered if Prometheus is moved outside
+the trusted internal Docker network or if the transport architecture changes.
 
-`python.flask.security.audit.app-run-param-config.avoid_app_run_with_bad_host`
+## Removed historical exceptions
 
-The `app.run()` entrypoint is development-only. Production runs the Flask
-application through Gunicorn. The application service exposes port 5000 to
-Docker networks and does not directly publish that port on the host.
+Two previous findings no longer require exceptions:
 
-### SRI on embedded favicon
+- the Flask development entrypoint binds to `127.0.0.1` instead of
+  `0.0.0.0`;
+- the favicon is served as a local static file instead of a `data:` URI.
 
-Excluded rule:
-
-`html.security.audit.missing-integrity.missing-integrity`
-
-The reported element is an SVG favicon embedded as a `data:` URI. It is not an
-externally hosted script, stylesheet, or other remote dependency. Subresource
-Integrity is therefore not applicable to that resource.
-
-## Review principle
-
-A Semgrep exclusion is not treated as proof that the underlying pattern is
-universally safe. Each exclusion is scoped to the current architecture and
-must be reconsidered if the corresponding transport, deployment model, or
-resource loading strategy changes.
+No global `--exclude-rule` is currently required by the CI workflow.

@@ -42,11 +42,8 @@ jobs:
 
               --config auto \\
 
-              --exclude-rule python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http \\
 
-              --exclude-rule python.flask.security.audit.app-run-param-config.avoid_app_run_with_bad_host \\
 
-              --exclude-rule html.security.audit.missing-integrity.missing-integrity \\
 
               --error \\
 

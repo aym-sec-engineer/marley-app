@@ -87,8 +87,8 @@ Services complémentaires :
   `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` et CSP ;
 - JavaScript exécutable servi localement ; la CSP n'autorise les scripts que
   depuis `'self'` ;
-- les données dynamiques injectées dans les fragments HTML du dashboard sont
-  encodées avant rendu.
+- les principaux champs textuels provenant des API et injectés dans des
+  fragments HTML sont encodés avant rendu.
 
 La CSP conserve actuellement `style-src 'unsafe-inline'` pour certains styles
 dynamiques. Les Google Fonts restent chargées depuis `fonts.googleapis.com` /
@@ -125,13 +125,17 @@ Checkout
 Semgrep est exécuté comme gate CI bloquant. L'image Semgrep utilisée par le
 workflow est verrouillée par digest.
 
-Trois règles sont actuellement exclues après revue manuelle du contexte
-d'architecture : transport HTTP interne vers Prometheus, entrypoint Flask de
-développement écoutant sur `0.0.0.0`, et SRI signalé sur un favicon SVG
-embarqué via `data:`.
+Le ruleset Community est actuellement résolu dynamiquement via `--config auto` :
+le moteur est donc pinné, mais le contenu exact du ruleset n'est pas présenté
+comme bit-for-bit reproductible.
 
-La justification et les conditions de réévaluation de ces exceptions sont
-documentées dans [`semgrep-policy.md`](./semgrep-policy.md).
+La règle signalant les transports HTTP est conservée globalement active.
+Seuls les appels `requests.get()` qui interrogent Prometheus sur le réseau
+Docker interne `monitoring` portent une suppression locale documentée dans
+[`semgrep-policy.md`](./semgrep-policy.md).
+
+Les anciennes exceptions concernant l'entrypoint Flask `0.0.0.0` et le favicon
+`data:` ont été supprimées à la source.
 
 ### Trivy et SBOM
 
@@ -159,7 +163,8 @@ de provenance**.
 
 Ces mesures réduisent la dérive de dépendances, mais le build n'est pas présenté
 comme bit-for-bit reproductible : certaines opérations de build restent
-dépendantes de dépôts externes, notamment `apk upgrade`.
+dépendantes de dépôts externes, notamment `apk upgrade`, et le ruleset
+Community Semgrep est résolu dynamiquement via `--config auto`.
 
 ---
 
@@ -175,12 +180,11 @@ explicitement distinguée lorsque nécessaire :
 - `configured` : valeur issue de la configuration de l'application ;
 - `recorded_scan` : résultat de scan historisé ;
 - `not_instrumented` : composant présent mais sans télémétrie correspondante ;
-- `unavailable` : source attendue indisponible ;
-- `simulated` : fallback encore utilisé par certains collecteurs lorsque leur
-  source runtime n'est pas disponible.
+- `unavailable` : source attendue indisponible.
 
-Une valeur simulée ou indisponible ne doit donc pas être interprétée comme une
-observation réelle de l'infrastructure.
+Une valeur indisponible ne doit pas être interprétée comme une observation
+réelle de l'infrastructure. Les collecteurs ne génèrent pas de métriques
+fictives lorsque leur source runtime est indisponible.
 
 ### CrowdSec
 
@@ -281,7 +285,6 @@ Limites connues :
 - absence de signature / attestation d'image ;
 - absence d'Alertmanager ;
 - absence de centralisation de logs type Loki ;
-- certains collecteurs possèdent encore un fallback simulé ;
 - certaines sources de sécurité sont volontairement `not_instrumented` ;
 - `style-src 'unsafe-inline'` reste nécessaire dans la CSP ;
 - Google Fonts reste une dépendance frontend externe ;
@@ -303,7 +306,7 @@ Limites connues :
 - [ ] Signature / attestation d'images
 - [ ] Alertmanager
 - [ ] Centralisation des logs
-- [ ] Suppression des derniers fallbacks simulés
+- [x] Suppression des fallbacks de télémétrie simulée
 - [ ] Réduction de `style-src 'unsafe-inline'`
 - [ ] Provisionnement reproductible de l'hôte
 

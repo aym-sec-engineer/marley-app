@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import json
 import os
-import random
 import subprocess
 import requests
 import time
@@ -110,7 +109,7 @@ def get_security_headers() -> dict:
             "style-src 'self' 'unsafe-inline' "
             "https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
-            "img-src 'self' data:; "
+            "img-src 'self'; "
             "connect-src 'self'; "
             "object-src 'none'; "
             "base-uri 'self'; "
@@ -121,7 +120,7 @@ def get_security_headers() -> dict:
 
 @app.after_request
 def apply_security_headers(response):
-    """Applique un set d'en-têtes de sécurité conforme aux
+    """Applique une politique d'en-têtes de sécurité inspirée des
     recommandations OWASP Secure Headers Project.
 
     La CSP n'autorise l'exécution JavaScript que depuis l'origine
@@ -334,11 +333,11 @@ def get_security_events(
 # ═══════════════════════════════════════════════════════════════════
 
 def get_host_metrics() -> dict:
-    """Métriques globales de l'hôte (CPU/RAM/Disque/Uptime).
+    """Métriques globales CPU/RAM/disque/uptime collectées via psutil.
 
-    Utilise psutil si disponible (cas réel sur le VPS), sinon retourne
-    des valeurs simulées plausibles pour un petit lab."""
-
+    Si la collecte runtime est indisponible, aucune valeur n'est inventée :
+    les métriques sont retournées à None avec une provenance `unavailable`.
+    """
     if PSUTIL_AVAILABLE:
         try:
             return {
@@ -348,15 +347,15 @@ def get_host_metrics() -> dict:
                 "uptime_seconds": int(time.time() - psutil.boot_time()),
                 "data_source": "live",
             }
-        except Exception:
-            pass
+        except Exception as exc:
+            app.logger.warning("Host metrics unavailable: %s", exc)
 
     return {
-        "cpu_percent": round(random.uniform(4.0, 22.0), 1),
-        "mem_percent": round(random.uniform(28.0, 52.0), 1),
-        "disk_percent": round(random.uniform(18.0, 40.0), 1),
-        "uptime_seconds": 86400 * random.randint(2, 14),
-        "data_source": "simulated",
+        "cpu_percent": None,
+        "mem_percent": None,
+        "disk_percent": None,
+        "uptime_seconds": None,
+        "data_source": "unavailable",
     }
 
 
@@ -384,30 +383,13 @@ def _calculate_cpu_percent(stats: dict) -> float:
     return 0.0
 
 
-def _simulate_container_metrics() -> list[dict]:
-    """Jeu de données simulé pour les conteneurs de la stack Marley —
-    utilisé uniquement si Prometheus/cAdvisor est indisponible."""
-
-    metrics = []
-    for c in MARLEY_CONTAINERS:
-        metrics.append({
-            "name": c["name"],
-            "role": c["role"],
-            "image": c["image"],
-            "status": "running",
-            "cpu_percent": round(random.uniform(0.4, 18.0), 2),
-            "mem_percent": round(random.uniform(2.0, 38.0), 2),
-            "mem_usage_mb": round(random.uniform(18.0, 240.0), 1),
-        })
-    return metrics
-
-
 def get_container_metrics() -> tuple[list[dict], bool]:
     """Métriques CPU/RAM des conteneurs via Prometheus/cAdvisor.
 
     L'application n'interroge pas directement le daemon Docker.
     cAdvisor collecte les métriques des conteneurs et Prometheus les
-    centralise. En cas d'indisponibilité, retourne les données simulées.
+    centralise. Si cette télémétrie est indisponible, aucune métrique
+    de remplacement n'est inventée.
 
     Retourne (metrics, is_live).
     """
@@ -429,7 +411,7 @@ def get_container_metrics() -> tuple[list[dict], bool]:
         results = {}
 
         for key, query in queries.items():
-            response = requests.get(
+            response = requests.get(  # nosemgrep: python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http
                 url,
                 params={"query": query},
                 timeout=5,
@@ -551,7 +533,7 @@ def get_container_metrics() -> tuple[list[dict], bool]:
     except Exception:
         pass
 
-    return _simulate_container_metrics(), False
+    return [], False
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -623,7 +605,7 @@ def query_prometheus_scalar(query: str) -> tuple[float | None, bool]:
 
     try:
         resp = requests.get(
-            f"{PROMETHEUS_URL}/api/v1/query",
+            f"{PROMETHEUS_URL}/api/v1/query",  # nosemgrep: python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http
             params={"query": query},
             timeout=3,
         )
@@ -720,9 +702,8 @@ def get_crowdsec_metrics() -> dict:
 
 
 def get_attacks_timeline(hours: int = 24) -> dict:
-    """Série temporelle horaire des tentatives bloquées, ventilée par
-    couche de défense (CrowdSec L3/L4 vs WAF L7) — alimente le graphique
-    linéaire du tableau de bord.
+    """Série temporelle horaire de télémétrie de sécurité affichée
+    par le dashboard.
 
     CrowdSec : increase(cs_node_hits_total) agrégé par pas d'1h, requêté
     en direct sur Prometheus. WAF : aucune instrumentation Prometheus
@@ -745,7 +726,7 @@ def get_attacks_timeline(hours: int = 24) -> dict:
         source = "unavailable"
         try:
             resp = requests.get(
-                f"{PROMETHEUS_URL}/api/v1/query_range",
+                f"{PROMETHEUS_URL}/api/v1/query_range",  # nosemgrep: python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http
                 params={
                     "query": query,
                     "start": start.timestamp(),
@@ -1008,7 +989,7 @@ def api_containers():
     return jsonify({
         "containers": metrics,
         "count": len(metrics),
-        "data_source": "live" if is_live else "simulated",
+        "data_source": "live" if is_live else "unavailable",
     })
 
 
@@ -1048,13 +1029,13 @@ def api_compliance():
             "scope": "application_response_policy",
             "runtime_verification": False,
         },
-        "data_source": "recorded_scan" if scans_available else "unavailable",
+        "data_source": "mixed",
     })
 
 
 @app.route("/api/v1/timeline")
 def api_timeline():
-    """Série temporelle pour le graphique d'attaques (Chart.js)."""
+    """Série temporelle de télémétrie sécurité pour Chart.js."""
 
     hours = request.args.get("hours", default=24, type=int)
     return jsonify(get_attacks_timeline(hours=hours))
@@ -1130,4 +1111,4 @@ def server_error(_error):
 # ═══════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=Config.DEBUG)
+    app.run(host="127.0.0.1", port=5000, debug=Config.DEBUG)
