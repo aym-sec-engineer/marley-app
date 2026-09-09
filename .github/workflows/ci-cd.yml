@@ -26,6 +26,33 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Semgrep SAST
+
+        run: |
+
+          docker run --rm \\
+
+            -v "$GITHUB_WORKSPACE:/src:ro" \\
+
+            -w /src \\
+
+            semgrep/semgrep:1.175.1@sha256:51c9f53a4fce0d55e9abd08d7b96968654248a4b1122e77f20e0a49c0072446c \\
+
+            semgrep scan \\
+
+              --config auto \\
+
+              --exclude-rule python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http \\
+
+              --exclude-rule python.flask.security.audit.app-run-param-config.avoid_app_run_with_bad_host \\
+
+              --exclude-rule html.security.audit.missing-integrity.missing-integrity \\
+
+              --error \\
+
+              .
+
+
       - name: Generate image tag
         id: meta
         run: echo "tag=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"

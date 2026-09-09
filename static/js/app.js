@@ -10,6 +10,14 @@
     setInterval(tickClock, 1000);
 
     // ── Helpers ──────────────────────────────────────────────────
+      // Encode une valeur texte pour son insertion dans nos fragments HTML.
+      // textContent délègue l'encodage au DOM plutôt qu'à une liste artisanale.
+      function escape_html(value) {
+        const node = document.createElement('span');
+        node.textContent = String(value ?? '');
+        return node.innerHTML;
+      }
+
     function fmt_uptime(seconds) {
       const d = Math.floor(seconds / 86400);
       const h = Math.floor((seconds % 86400) / 3600);
@@ -204,9 +212,9 @@
       document.getElementById('fw-engine').textContent = d.firewall?.engine ?? 'nftables';
       document.getElementById('fw-ports').innerHTML = ports.map(p => `
         <li class="flex items-center justify-between px-3 py-2 rounded-xl bg-cyber-surface-2 border border-cyber-border">
-          <span class="font-mono text-[11px] text-cyan-300">:${p.port}</span>
-          <span class="text-[11px] text-slate-300">${p.service}</span>
-          <span class="text-[10px] text-slate-500 hidden sm:inline truncate max-w-[100px]">${p.auth}</span>
+          <span class="font-mono text-[11px] text-cyan-300">:${escape_html(p.port)}</span>
+          <span class="text-[11px] text-slate-300">${escape_html(p.service)}</span>
+          <span class="text-[10px] text-slate-500 hidden sm:inline truncate max-w-[100px]">${escape_html(p.auth)}</span>
         </li>
       `).join('') || '<li class="text-xs text-slate-500 px-3 py-2">Aucun port trouvé</li>';
 
@@ -240,13 +248,13 @@
         return `
           <tr class="hover:bg-cyber-surface-2/50 transition-colors">
             <td class="px-5 py-2.5 whitespace-nowrap">${sev_badge(ev.severity)}</td>
-            <td class="px-5 py-2.5 hidden sm:table-cell font-mono text-[10px] text-slate-400 whitespace-nowrap">${ev.source_ip || '—'}</td>
+            <td class="px-5 py-2.5 hidden sm:table-cell font-mono text-[10px] text-slate-400 whitespace-nowrap">${escape_html(ev.source_ip || '—')}</td>
             <td class="px-5 py-2.5 whitespace-nowrap">
-              <span class="font-medium text-slate-200 text-[11px]">${ev.event_type || '—'}</span>
+              <span class="font-medium text-slate-200 text-[11px]">${escape_html(ev.event_type || '—')}</span>
               <span class="block font-mono text-[9px] text-slate-600">${time_str}</span>
             </td>
-            <td class="px-5 py-2.5 hidden lg:table-cell text-slate-400 text-[11px] max-w-[200px] truncate">${ev.message || '—'}</td>
-            <td class="px-5 py-2.5 hidden xl:table-cell font-mono text-[10px] text-slate-500 whitespace-nowrap">${ev.action || '—'}</td>
+            <td class="px-5 py-2.5 hidden lg:table-cell text-slate-400 text-[11px] max-w-[200px] truncate">${escape_html(ev.message || '—')}</td>
+            <td class="px-5 py-2.5 hidden xl:table-cell font-mono text-[10px] text-slate-500 whitespace-nowrap">${escape_html(ev.action || '—')}</td>
           </tr>`;
       }).join('');
     }
@@ -287,14 +295,14 @@
           <div class="px-5 py-3.5 hover:bg-cyber-surface-2/50 transition-colors">
             <div class="flex items-start justify-between gap-2 mb-2">
               <div class="min-w-0">
-                <p class="text-xs font-semibold text-slate-200 font-mono truncate">${c.name}</p>
-                <p class="text-[10px] text-slate-500 truncate">${c.role}</p>
+                <p class="text-xs font-semibold text-slate-200 font-mono truncate">${escape_html(c.name)}</p>
+                <p class="text-[10px] text-slate-500 truncate">${escape_html(c.role)}</p>
               </div>
               <span class="px-1.5 py-0.5 rounded text-[9px] font-mono flex-shrink-0 ${
                 c.status === 'running'
                   ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                   : 'bg-red-500/10 text-red-400 border border-red-500/20'
-              }">${c.status}</span>
+              }">${escape_html(c.status)}</span>
             </div>
             <div class="space-y-1.5">
               <div class="flex items-center gap-2 text-[10px]">
@@ -333,11 +341,11 @@
         return `
           <tr class="hover:bg-cyber-surface-2/50 transition-colors">
             <td class="px-5 py-2.5 whitespace-nowrap">${sev_badge(ev.severity)}</td>
-            <td class="px-5 py-2.5 font-mono text-[10px] text-slate-400 whitespace-nowrap">${ev.source_ip || '—'}</td>
-            <td class="px-5 py-2.5 whitespace-nowrap font-medium text-slate-200 text-[11px]">${ev.event_type || '—'}</td>
-            <td class="px-5 py-2.5 font-mono text-[10px] text-slate-500 whitespace-nowrap">${ev.scenario || '—'}</td>
-            <td class="px-5 py-2.5 text-slate-400 text-[11px] max-w-[260px] truncate">${ev.message || '—'}</td>
-            <td class="px-5 py-2.5 font-mono text-[10px] text-slate-500 whitespace-nowrap">${ev.action || '—'}</td>
+            <td class="px-5 py-2.5 font-mono text-[10px] text-slate-400 whitespace-nowrap">${escape_html(ev.source_ip || '—')}</td>
+            <td class="px-5 py-2.5 whitespace-nowrap font-medium text-slate-200 text-[11px]">${escape_html(ev.event_type || '—')}</td>
+            <td class="px-5 py-2.5 font-mono text-[10px] text-slate-500 whitespace-nowrap">${escape_html(ev.scenario || '—')}</td>
+            <td class="px-5 py-2.5 text-slate-400 text-[11px] max-w-[260px] truncate">${escape_html(ev.message || '—')}</td>
+            <td class="px-5 py-2.5 font-mono text-[10px] text-slate-500 whitespace-nowrap">${escape_html(ev.action || '—')}</td>
             <td class="px-5 py-2.5 font-mono text-[9px] text-slate-600 whitespace-nowrap">${time_str}</td>
           </tr>`;
       }).join('');
@@ -367,16 +375,16 @@
           <div class="bg-cyber-surface-2 border border-cyber-border rounded-xl p-4">
             <div class="flex items-start justify-between gap-2 mb-3">
               <div class="min-w-0">
-                <p class="text-sm font-semibold text-slate-200 font-mono truncate">${c.name}</p>
-                <p class="text-[11px] text-slate-500 truncate">${c.role}</p>
+                <p class="text-sm font-semibold text-slate-200 font-mono truncate">${escape_html(c.name)}</p>
+                <p class="text-[11px] text-slate-500 truncate">${escape_html(c.role)}</p>
               </div>
               <span class="px-1.5 py-0.5 rounded text-[9px] font-mono flex-shrink-0 ${
                 c.status === 'running'
                   ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                   : 'bg-red-500/10 text-red-400 border border-red-500/20'
-              }">${c.status}</span>
+              }">${escape_html(c.status)}</span>
             </div>
-            <p class="text-[10px] font-mono text-slate-500 truncate mb-3">${c.image || '—'}</p>
+            <p class="text-[10px] font-mono text-slate-500 truncate mb-3">${escape_html(c.image || '—')}</p>
             <div class="space-y-2">
               <div class="flex items-center gap-2 text-[10px]">
                 <span class="text-slate-500 w-8">CPU</span>
@@ -413,8 +421,8 @@
           : '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-green-500/10 text-green-400 border border-green-500/20">EXTERNAL</span>';
         const containersList = (net.containers ?? []).map(c => `
           <li class="flex items-center justify-between px-3 py-2 rounded-xl bg-cyber-surface-2 border border-cyber-border">
-            <span class="font-mono text-[11px] text-cyan-300 truncate">${c.name}</span>
-            <span class="font-mono text-[10px] text-slate-500 flex-shrink-0">${c.ipv4}</span>
+            <span class="font-mono text-[11px] text-cyan-300 truncate">${escape_html(c.name)}</span>
+            <span class="font-mono text-[10px] text-slate-500 flex-shrink-0">${escape_html(c.ipv4)}</span>
           </li>`).join('') || '<li class="text-xs text-slate-500 px-3 py-2">Aucun conteneur</li>';
 
         return `
@@ -424,8 +432,8 @@
                 <i data-lucide="network" class="w-4 h-4 text-cyan-400"></i>
               </div>
               <div class="min-w-0">
-                <p class="text-sm font-semibold text-slate-100 font-mono truncate">${net.name}</p>
-                <p class="text-[10px] font-mono text-slate-500">${net.driver} · ${net.subnet}</p>
+                <p class="text-sm font-semibold text-slate-100 font-mono truncate">${escape_html(net.name)}</p>
+                <p class="text-[10px] font-mono text-slate-500">${escape_html(net.driver)} · ${escape_html(net.subnet)}</p>
               </div>
               <div class="ml-auto flex-shrink-0">${badge}</div>
             </div>
@@ -488,10 +496,10 @@
       document.getElementById('headers-list').innerHTML = headerEntries.map(([name, value]) => `
         <li class="px-3 py-2.5 rounded-xl bg-cyber-surface-2 border border-cyber-border">
           <div class="flex items-center justify-between gap-3 mb-1">
-            <span class="font-mono text-[11px] text-cyan-300">${name}</span>
+            <span class="font-mono text-[11px] text-cyan-300">${escape_html(name)}</span>
             <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex-shrink-0">${headersEvidence.source === 'configured' ? 'CONFIGURÉ' : 'SOURCE INCONNUE'}</span>
           </div>
-          <p class="font-mono text-[10px] text-slate-500 break-all">${value}</p>
+          <p class="font-mono text-[10px] text-slate-500 break-all">${escape_html(value)}</p>
         </li>
       `).join('') || '<li class="text-xs text-slate-500 px-3 py-2">Aucun header trouvé</li>';
     }
@@ -510,8 +518,8 @@
       container.innerHTML = groups.map(g => {
         const rows = Object.entries(g.data ?? {}).map(([key, value]) => `
           <div class="flex items-center justify-between text-xs py-1.5">
-            <span class="text-slate-400 font-mono">${key}</span>
-            <span class="font-mono text-slate-200">${value}</span>
+            <span class="text-slate-400 font-mono">${escape_html(key)}</span>
+            <span class="font-mono text-slate-200">${escape_html(value)}</span>
           </div>
         `).join('');
         return `
