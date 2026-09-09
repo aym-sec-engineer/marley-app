@@ -90,8 +90,8 @@ Services complémentaires :
 - les principaux champs textuels provenant des API et injectés dans des
   fragments HTML sont encodés avant rendu.
 
-La CSP conserve actuellement `style-src 'unsafe-inline'` pour certains styles
-dynamiques. Les Google Fonts restent chargées depuis `fonts.googleapis.com` /
+La CSP n'autorise plus les styles inline ; les styles applicatifs sont servis depuis les fichiers CSS du projet.
+Les Google Fonts restent chargées depuis `fonts.googleapis.com` /
 `fonts.gstatic.com`.
 
 ---
@@ -286,7 +286,7 @@ Limites connues :
 - absence d'Alertmanager ;
 - absence de centralisation de logs type Loki ;
 - certaines sources de sécurité sont volontairement `not_instrumented` ;
-- `style-src 'unsafe-inline'` reste nécessaire dans la CSP ;
+- la CSP n'utilise plus `style-src 'unsafe-inline'` ;
 - Google Fonts reste une dépendance frontend externe ;
 - cAdvisor fonctionne avec des privilèges élevés pour collecter la télémétrie
   des conteneurs ;
@@ -307,7 +307,7 @@ Limites connues :
 - [ ] Alertmanager
 - [ ] Centralisation des logs
 - [x] Suppression des fallbacks de télémétrie simulée
-- [ ] Réduction de `style-src 'unsafe-inline'`
+- [x] Suppression de `style-src 'unsafe-inline'`
 - [ ] Provisionnement reproductible de l'hôte
 
 ---
