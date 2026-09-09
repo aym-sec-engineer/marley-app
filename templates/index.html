@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
-  <title>Marley Security Dashboard · v2.0.0</title>
+  <title>MARLEY · Security & Observability</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -15,53 +15,7 @@
   <script src="/static/vendor/chart.umd.min.js"></script>
   <script src="/static/vendor/lucide.js"></script>
 
-  <style>
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.15); border-radius: 9999px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.28); }
 
-    /* ── Pulse for status dot ── */
-    @keyframes status-pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.85); }
-    }
-    .status-pulse { animation: status-pulse 2.4s ease-in-out infinite; }
-
-    /* ── KPI card hover ── */
-    .kpi-card { transition: border-color 0.2s, box-shadow 0.2s; }
-    .kpi-card:hover { border-color: rgba(148,163,184,0.22); box-shadow: 0 0 0 1px rgba(34,211,238,0.06) inset; }
-
-    /* ── Glow for severity ── */
-    .sev-high  { color: #f87171; }
-    .sev-warn  { color: #fb923c; }
-    .sev-info  { color: #38bdf8; }
-    .badge-high { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
-    .badge-warn { background: rgba(251,146,60,0.12);  color: #fb923c; border: 1px solid rgba(251,146,60,0.25); }
-    .badge-info { background: rgba(56,189,248,0.10);  color: #38bdf8; border: 1px solid rgba(56,189,248,0.25); }
-
-    /* ── Global SECURE / ELEVATED / ALERT status pill ── */
-    .pill-secure   { background: rgba(34,197,94,0.10);  color: #4ade80; border-color: rgba(34,197,94,0.30); }
-    .pill-secure   .status-pulse { background: #4ade80; }
-    .pill-elevated { background: rgba(251,146,60,0.12); color: #fb923c; border-color: rgba(251,146,60,0.35); }
-    .pill-elevated .status-pulse { background: #fb923c; }
-    .pill-alert    { background: rgba(248,113,113,0.14);color: #f87171; border-color: rgba(248,113,113,0.40); }
-    .pill-alert    .status-pulse { background: #f87171; }
-
-    /* ── Bar fill animate ── */
-    @keyframes bar-fill { from { width: 0; } }
-    .bar-fill { animation: bar-fill 0.7s cubic-bezier(.4,0,.2,1) both; }
-
-    /* ── Skeleton shimmer ── */
-    @keyframes shimmer { to { background-position: 200% center; } }
-    .skeleton {
-      background: linear-gradient(90deg, rgba(30,40,60,0.7) 25%, rgba(50,65,90,0.5) 50%, rgba(30,40,60,0.7) 75%);
-      background-size: 200% auto;
-      animation: shimmer 1.6s linear infinite;
-      border-radius: 0.5rem;
-    }
-  </style>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body class="bg-cyber-bg text-slate-200 font-sans antialiased min-h-screen">
@@ -75,46 +29,46 @@
           <i data-lucide="shield-check" class="w-5 h-5 text-cyan-400"></i>
         </div>
         <div class="hidden lg:block leading-tight">
-          <p class="font-display font-semibold text-sm text-slate-100 tracking-wide">MARLEY</p>
-          <p class="text-[10px] uppercase tracking-[0.2em] text-slate-500">DevSecOps Lab</p>
+          <p class="font-semibold text-sm text-slate-100 tracking-wide">MARLEY</p>
+          <p class="text-[11px] text-slate-500">Security &amp; Observability</p>
         </div>
       </div>
 
       <nav class="flex-1 px-2 lg:px-3 py-5 space-y-1">
-        <a href="#" data-tab="overview" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+        <a href="#" data-tab="overview" aria-label="Vue d’ensemble" title="Vue d’ensemble" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-cyber-surface-2 text-slate-100 border border-cyber-border-strong">
           <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
-          <span class="hidden lg:inline">Overview</span>
+          <span class="hidden lg:inline">Vue d’ensemble</span>
         </a>
-        <a href="#" data-tab="events" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+        <a href="#" data-tab="events" aria-label="Décisions CrowdSec" title="Décisions CrowdSec" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
           <i data-lucide="activity" class="w-4 h-4 flex-shrink-0"></i>
-          <span class="hidden lg:inline">Security Events</span>
+          <span class="hidden lg:inline">Décisions CrowdSec</span>
         </a>
-        <a href="#" data-tab="containers" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+        <a href="#" data-tab="containers" aria-label="Workloads" title="Workloads" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
           <i data-lucide="box" class="w-4 h-4 flex-shrink-0"></i>
-          <span class="hidden lg:inline">Conteneurs</span>
+          <span class="hidden lg:inline">Workloads</span>
         </a>
-        <a href="#" data-tab="network" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+        <a href="#" data-tab="network" aria-label="Topologie" title="Topologie" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
           <i data-lucide="network" class="w-4 h-4 flex-shrink-0"></i>
-          <span class="hidden lg:inline">Réseau</span>
+          <span class="hidden lg:inline">Topologie</span>
         </a>
-        <a href="#" data-tab="compliance" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+        <a href="#" data-tab="compliance" aria-label="Preuves de sécurité" title="Preuves de sécurité" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
           <i data-lucide="file-check" class="w-4 h-4 flex-shrink-0"></i>
-          <span class="hidden lg:inline">Security Evidence</span>
+          <span class="hidden lg:inline">Preuves de sécurité</span>
         </a>
-        <a href="#" data-tab="settings" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
+        <a href="#" data-tab="settings" aria-label="Configuration" title="Configuration" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-cyber-surface-2 transition-colors">
           <i data-lucide="settings" class="w-4 h-4 flex-shrink-0"></i>
-          <span class="hidden lg:inline">Paramètres</span>
+          <span class="hidden lg:inline">Configuration</span>
         </a>
       </nav>
 
       <div class="p-3 lg:p-4 border-t border-cyber-border space-y-3">
         <div class="hidden lg:flex items-center justify-between text-[10px] font-mono text-slate-500">
-          <span class="px-2 py-0.5 rounded-md bg-cyber-surface-2 border border-cyber-border">PRODUCTION</span>
+          <span class="px-2 py-0.5 rounded-md bg-cyber-surface-2 border border-cyber-border">LAB · PROD RUNTIME</span>
           <span>v2.0.0</span>
         </div>
-        <div id="profile-card-trigger" class="relative flex items-center gap-2.5 px-2 py-2 rounded-xl bg-cyber-surface-2 border border-cyber-border cursor-pointer hover:border-cyan-500/30 hover:bg-cyber-surface transition-colors">
+        <button id="profile-card-trigger" type="button" aria-label="Ouvrir le profil et le CV" class="relative w-full flex items-center gap-2.5 px-2 py-2 rounded-lg bg-cyber-surface-2 border border-cyber-border cursor-pointer hover:border-cyber-border-strong hover:bg-cyber-surface transition-colors text-left">
           <div class="relative flex-shrink-0">
-            <div class="w-8 h-8 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-[11px] font-display font-semibold text-violet-300">AY</div>
+            <div class="w-8 h-8 rounded-lg bg-cyber-surface border border-cyber-border flex items-center justify-center text-[11px] font-display font-semibold text-slate-300">AY</div>
             <span class="lg:hidden absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 border-2 border-cyber-surface"></span>
           </div>
           <div class="hidden lg:block leading-tight flex-1 min-w-0">
@@ -122,7 +76,7 @@
             <p class="text-[10px] text-slate-500">Security Engineer</p>
           </div>
           <i data-lucide="chevron-right" class="hidden lg:block w-3.5 h-3.5 text-slate-600 flex-shrink-0"></i>
-        </div>
+        </button>
       </div>
     </aside>
 
@@ -132,13 +86,13 @@
       <!-- HEADER -->
       <header class="h-16 border-b border-cyber-border bg-cyber-surface/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-8 sticky top-0 z-10">
         <div>
-          <h1 class="font-display font-semibold text-lg text-slate-100">Vue d'ensemble</h1>
-          <p id="last-sync" class="text-xs text-slate-500 font-mono mt-0.5">Synchronisation…</p>
+          <h1 class="font-semibold text-lg text-slate-100" id="page-title">Vue d’ensemble</h1>
+          <p id="last-sync" class="text-xs text-slate-500 mt-0.5">Actualisation des sources…</p>
         </div>
         <div class="flex items-center gap-3">
-          <button id="header-profile-trigger" type="button" class="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-medium bg-violet-500/10 text-violet-300 border-violet-500/30 hover:bg-violet-500/20 hover:border-violet-500/50 transition-colors">
+          <button id="header-profile-trigger" type="button" aria-label="Ouvrir le profil" title="Profil" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium bg-cyber-surface-2 text-slate-300 border-cyber-border hover:border-cyber-border-strong transition-colors">
             <i data-lucide="user-circle" class="w-3.5 h-3.5 flex-shrink-0"></i>
-            <span class="hidden sm:inline">Profil / CV</span>
+            <span class="hidden sm:inline hidden sm:inline">Profil / CV</span>
           </button>
           <span id="clock" class="hidden sm:inline font-mono text-xs text-slate-500"></span>
           <div id="status-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-medium bg-cyber-surface-2 text-slate-400 border-cyber-border">
@@ -149,13 +103,13 @@
       </header>
 
       <!-- CONTENT -->
-      <main class="flex-1 p-4 lg:p-8 space-y-6 lg:space-y-8 overflow-auto">
+      <main class="flex-1 p-4 lg:p-7 space-y-5 lg:space-y-6 overflow-auto">
 
         <!-- KPI GRID -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
           <!-- KPI: déclenchements CrowdSec sur 24 h -->
-          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-2xl p-5">
+          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-xl p-5">
             <div class="flex items-center justify-between mb-4">
               <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">Déclenchements CrowdSec</span>
               <div class="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center">
@@ -166,7 +120,7 @@
             <p id="kpi-cs-source" class="text-xs text-slate-500 mt-1 font-mono">dernières 24 h · —</p>
           </div>
           <!-- KPI: CPU -->
-          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-2xl p-5">
+          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-xl p-5">
             <div class="flex items-center justify-between mb-4">
               <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">CPU Hôte</span>
               <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
@@ -175,12 +129,12 @@
             </div>
             <p id="kpi-cpu" class="font-display text-3xl font-bold text-slate-100">—</p>
             <div class="mt-2 h-1.5 rounded-full bg-cyber-surface-2 overflow-hidden">
-              <div id="bar-cpu" class="h-full rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 bar-fill" style="width:0%"></div>
+              <progress id="bar-cpu" class="host-progress host-progress-cpu" max="100" value="0" aria-label="CPU hôte utilisé"></progress>
             </div>
           </div>
 
           <!-- KPI: RAM -->
-          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-2xl p-5">
+          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-xl p-5">
             <div class="flex items-center justify-between mb-4">
               <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">RAM Hôte</span>
               <div class="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
@@ -189,162 +143,315 @@
             </div>
             <p id="kpi-mem" class="font-display text-3xl font-bold text-slate-100">—</p>
             <div class="mt-2 h-1.5 rounded-full bg-cyber-surface-2 overflow-hidden">
-              <div id="bar-mem" class="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400 bar-fill" style="width:0%"></div>
+              <progress id="bar-mem" class="host-progress host-progress-mem" max="100" value="0" aria-label="Mémoire hôte utilisée"></progress>
             </div>
           </div>
 
-          <!-- KPI: Uptime -->
-          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-2xl p-5">
+          <!-- KPI: disque hôte -->
+          <div class="kpi-card bg-cyber-surface border border-cyber-border rounded-xl p-5">
             <div class="flex items-center justify-between mb-4">
-              <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">Uptime</span>
+              <span class="text-xs font-medium text-slate-400 uppercase tracking-widest">DISQUE HÔTE</span>
               <div class="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
                 <i data-lucide="timer" class="w-4 h-4 text-green-400"></i>
               </div>
             </div>
-            <p id="kpi-uptime" class="font-display text-3xl font-bold text-slate-100">—</p>
-            <p class="text-xs text-slate-500 mt-1 font-mono">dernière reboot</p>
+            <p id="kpi-disk" class="font-display text-3xl font-bold text-slate-100">—</p>
+
+            <div class="mt-3 h-1 rounded-full bg-cyber-bg overflow-hidden">
+
+              <progress id="bar-disk" class="host-progress host-progress-disk" max="100" value="0" aria-label="Espace disque hôte utilisé"></progress>
+
+            </div>
+
+            <p class="text-xs text-slate-500 mt-2">Disque hôte</p>
+
+            <p id="kpi-host-meta" class="text-[11px] text-slate-600 mt-1 font-mono">uptime —</p>
           </div>
 
         </section>
 
-        <!-- MIDDLE ROW: Pare-feu + WAF + CrowdSec -->
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-          <!-- Pare-feu -->
-          <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                <i data-lucide="flame" class="w-4 h-4 text-cyan-400"></i>
-              </div>
-              <div>
-                <p class="text-sm font-semibold text-slate-100">Pare-feu</p>
-                <p id="fw-engine" class="text-[10px] font-mono text-slate-500">nftables</p>
-              </div>
-              <span class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-green-500/10 text-green-400 border border-green-500/20">ACTIVE</span>
-            </div>
-            <ul id="fw-ports" class="space-y-2">
-              <li class="skeleton h-7 w-full"></li>
-              <li class="skeleton h-7 w-full"></li>
-              <li class="skeleton h-7 w-full"></li>
-            </ul>
-          </div>
-
-          <!-- WAF -->
-          <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-                <i data-lucide="layers" class="w-4 h-4 text-orange-400"></i>
-              </div>
-              <div>
-                <p class="text-sm font-semibold text-slate-100">WAF</p>
-                <p id="waf-engine" class="text-[10px] font-mono text-slate-500">ModSecurity</p>
-              </div>
-              <span id="waf-mode-badge" class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">BLOCKING</span>
-            </div>
-            <div class="space-y-2.5">
-              <div class="flex items-center justify-between text-xs">
-                <span class="text-slate-400">Moteur</span>
-                <span id="waf-engine-val" class="font-mono text-slate-200">—</span>
-              </div>
-              <div class="flex items-center justify-between text-xs">
-                <span class="text-slate-400">Ruleset</span>
-                <span id="waf-ruleset" class="font-mono text-slate-200">—</span>
-              </div>
-              <div class="flex items-center justify-between text-xs">
-                <span class="text-slate-400">Mode</span>
-                <span id="waf-mode" class="font-mono text-slate-200">—</span>
-              </div>
-              <div class="flex items-center justify-between text-xs">
-                <span class="text-slate-400">Statut</span>
-                <span class="font-mono text-green-400">active</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- CrowdSec -->
-          <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                <i data-lucide="shield-alert" class="w-4 h-4 text-red-400"></i>
-              </div>
-              <div>
-                <p class="text-sm font-semibold text-slate-100">CrowdSec</p>
-                <p class="text-[10px] font-mono text-slate-500">Détection comportementale SSH</p>
-              </div>
-              <span id="crowdsec-health" class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-cyber-surface-2 text-slate-400 border border-cyber-border">—</span>
+          <!-- CONTROLS & TELEMETRY -->
+          <section>
+            <div class="mb-3">
+              <p class="text-[11px] uppercase tracking-[0.14em] text-slate-500 font-medium">
+                Contrôles &amp; télémétrie
+              </p>
+              <p class="text-[12px] text-slate-600 mt-1">
+                Configuration déclarée et sources runtime observées.
+              </p>
             </div>
 
-            <div class="grid grid-cols-3 gap-3 pt-1">
-              <div>
-                <p id="cs-triggers-24h" class="font-display text-2xl font-bold text-slate-100">—</p>
-                <p class="mt-1 text-[9px] leading-tight text-slate-500 uppercase tracking-wider">Déclenchements · 24 h</p>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+              <!-- Firewall -->
+              <article class="bg-cyber-surface border border-cyber-border rounded-xl p-5">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <p class="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-medium">
+                      Pare-feu
+                    </p>
+                    <p id="fw-engine" class="text-sm font-semibold text-slate-100 mt-1">
+                      nftables
+                    </p>
+                  </div>
+
+                  <span class="px-2 py-1 rounded-md text-[10px] font-mono font-medium text-slate-300 bg-cyber-surface-2 border border-cyber-border">
+                    CONFIGURÉ
+                  </span>
+                </div>
+
+                <p class="text-[11px] leading-relaxed text-slate-600 mb-4">
+                  Politique réseau déclarée · état runtime non vérifié par cette vue.
+                </p>
+
+                <p class="text-[10px] uppercase tracking-[0.12em] text-slate-600 mb-2">
+                  Exposition déclarée
+                </p>
+
+                <ul id="fw-ports" class="space-y-2">
+                  <li class="skeleton h-7 w-full"></li>
+                  <li class="skeleton h-7 w-full"></li>
+                  <li class="skeleton h-7 w-full"></li>
+                </ul>
+              </article>
+
+              <!-- WAF -->
+              <article class="bg-cyber-surface border border-cyber-border rounded-xl p-5">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <p class="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-medium">
+                      WAF
+                    </p>
+                    <p id="waf-engine" class="text-sm font-semibold text-slate-100 mt-1">
+                      ModSecurity
+                    </p>
+                  </div>
+
+                  <span
+                    id="waf-mode-badge"
+                    class="px-2 py-1 rounded-md text-[10px] font-mono font-medium text-slate-300 bg-cyber-surface-2 border border-cyber-border"
+                  >
+                    CONFIGURÉ
+                  </span>
+                </div>
+
+                <p class="text-[11px] leading-relaxed text-slate-600 mb-4">
+                  Contrôle HTTP configuré · télémétrie événementielle non instrumentée.
+                </p>
+
+                <dl class="grid grid-cols-2 gap-x-5 gap-y-3 text-xs">
+                  <div>
+                    <dt class="text-slate-500">Ruleset</dt>
+                    <dd id="waf-ruleset" class="font-mono text-slate-200 mt-1">—</dd>
+                  </div>
+
+                  <div>
+                    <dt class="text-slate-500">Mode</dt>
+                    <dd id="waf-mode" class="font-mono text-slate-200 mt-1">—</dd>
+                  </div>
+
+                  <div>
+                    <dt class="text-slate-500">Source</dt>
+                    <dd id="waf-source" class="font-mono text-slate-400 mt-1">
+                      CONFIGURÉ
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt class="text-slate-500">Événements</dt>
+                    <dd class="font-mono text-slate-500 mt-1">
+                      NON INSTRUMENTÉ
+                    </dd>
+                  </div>
+                </dl>
+
+                <!-- Conservé pour compatibilité avec le renderer actuel. -->
+                <span id="waf-engine-val" class="hidden">—</span>
+              </article>
+
+              <!-- CrowdSec -->
+              <article class="bg-cyber-surface border border-cyber-border rounded-xl p-5">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <p class="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-medium">
+                      CrowdSec
+                    </p>
+
+                    <p class="text-sm font-semibold text-slate-100 mt-1">
+                      Détection comportementale
+                    </p>
+
+                    <p class="text-[11px] text-slate-600 mt-1">
+                      SSH &amp; HTTP · Prometheus + LAPI
+                    </p>
+                  </div>
+
+                  <span
+                    id="crowdsec-health"
+                    class="px-2 py-1 rounded-md text-[10px] font-mono font-medium bg-cyber-surface-2 text-slate-400 border border-cyber-border"
+                  >
+                    —
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 py-3">
+                  <div>
+                    <p id="cs-triggers-24h" class="text-xl font-semibold text-slate-100 font-mono">
+                      —
+                    </p>
+                    <p class="mt-1 text-[10px] leading-tight text-slate-600">
+                      Déclenchements · 24 h
+                    </p>
+                  </div>
+
+                  <div>
+                    <p id="cs-retained-alerts" class="text-xl font-semibold text-slate-100 font-mono">
+                      —
+                    </p>
+                    <p class="mt-1 text-[10px] leading-tight text-slate-600">
+                      Alertes conservées
+                    </p>
+                  </div>
+
+                  <div>
+                    <p id="cs-active-decisions" class="text-xl font-semibold text-slate-100 font-mono">
+                      —
+                    </p>
+                    <p class="mt-1 text-[10px] leading-tight text-slate-600">
+                      Décisions actives
+                    </p>
+                  </div>
+                </div>
+
+                <div class="pt-3 border-t border-cyber-border space-y-1">
+                  <p id="cs-source-label" class="text-[10px] font-mono text-slate-500">
+                    source: —
+                  </p>
+                  <p id="cs-community-label" class="text-[10px] font-mono text-slate-600">
+                    threat intel communautaire: —
+                  </p>
+                </div>
+              </article>
+
+            </div>
+          </section>
+
+          <!-- CROWDSEC ACTIVITY -->
+          <section class="bg-cyber-surface border border-cyber-border rounded-xl overflow-hidden">
+            <div class="px-5 lg:px-6 py-5 border-b border-cyber-border">
+              <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+
+                <div>
+                  <p class="text-[11px] uppercase tracking-[0.14em] text-slate-500 font-medium">
+                    Activité CrowdSec
+                  </p>
+
+                  <h2 class="text-sm font-semibold text-slate-100 mt-1">
+                    Logs analysés · dernières 24 h
+                  </h2>
+
+                  <p class="text-[11px] text-slate-600 mt-1">
+                    Série temporelle Prometheus · volume de logs uniquement.
+                  </p>
+                </div>
+
+                <div class="sm:text-right">
+                  <p id="total-cs" class="text-2xl font-semibold text-slate-100 font-mono">
+                    —
+                  </p>
+                  <p class="text-[11px] text-slate-500 mt-1">
+                    logs sur la fenêtre
+                  </p>
+                </div>
+
               </div>
-              <div>
-                <p id="cs-retained-alerts" class="font-display text-2xl font-bold text-slate-100">—</p>
-                <p class="mt-1 text-[9px] leading-tight text-slate-500 uppercase tracking-wider">Alertes conservées</p>
-              </div>
-              <div>
-                <p id="cs-active-decisions" class="font-display text-2xl font-bold text-slate-100">—</p>
-                <p class="mt-1 text-[9px] leading-tight text-slate-500 uppercase tracking-wider">Décisions actives</p>
+            </div>
+
+            <div class="px-4 lg:px-6 py-5">
+              <div class="relative h-52 lg:h-64">
+                <canvas id="timeline-chart"></canvas>
               </div>
             </div>
 
-            <div class="pt-3 border-t border-cyber-border space-y-1">
-              <p id="cs-source-label" class="text-[10px] font-mono text-slate-500">source: —</p>
-              <p id="cs-community-label" class="text-[10px] font-mono text-slate-600">threat intel communautaire: —</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 border-t border-cyber-border">
+
+              <div class="px-5 py-4 sm:border-r border-cyber-border">
+                <p class="text-[10px] uppercase tracking-[0.12em] text-slate-600">
+                  Gauge Prometheus
+                </p>
+
+                <p id="total-decisions" class="text-sm font-mono text-slate-200 mt-1">
+                  —
+                </p>
+
+                <p class="text-[11px] leading-relaxed text-slate-600 mt-1">
+                  décisions locales actives · dernier point collecté
+                </p>
+              </div>
+
+              <div class="px-5 py-4 sm:border-r border-cyber-border">
+                <p class="text-[10px] uppercase tracking-[0.12em] text-slate-600">
+                  Snapshot LAPI
+                </p>
+
+                <p id="timeline-lapi-decisions" class="text-sm font-mono text-slate-200 mt-1">
+                  —
+                </p>
+
+                <p class="text-[11px] leading-relaxed text-slate-600 mt-1">
+                  décisions locales actives au moment de la requête
+                </p>
+              </div>
+
+              <div class="px-5 py-4">
+                <p class="text-[10px] uppercase tracking-[0.12em] text-slate-600">
+                  Télémétrie WAF
+                </p>
+
+                <p id="total-waf" class="text-sm font-mono text-slate-500 mt-1">
+                  NON INSTRUMENTÉ
+                </p>
+
+                <p class="text-[11px] leading-relaxed text-slate-600 mt-1">
+                  aucune série événementielle collectée
+                </p>
+              </div>
+
             </div>
-          </div>
+          </section>
 
-
-        </section>
-
-        <!-- CHART -->
-        <section class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 lg:p-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-            <div>
-              <h2 class="text-sm font-semibold text-slate-100">Activité sécurité — 24 h</h2>
-              <p class="text-[11px] text-slate-500 mt-0.5">Logs analysés (CrowdSec) vs décisions de ban actives vs WAF ModSecurity (L7)</p>
-            </div>
-            <div class="flex items-center gap-4 text-[11px] font-mono">
-              <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-cyan-400 inline-block"></span><span class="text-slate-400">Logs analysés</span><strong id="total-cs" class="text-slate-200 ml-1">—</strong></span>
-              <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-rose-400 inline-block"></span><span class="text-slate-400">Décisions actives</span><strong id="total-decisions" class="text-slate-200 ml-1">—</strong></span>
-              <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded bg-orange-400 inline-block"></span><span class="text-slate-400">WAF</span><strong id="total-waf" class="text-slate-200 ml-1">—</strong></span>
-            </div>
-          </div>
-          <div class="relative h-52 lg:h-64">
-            <canvas id="timeline-chart"></canvas>
-          </div>
-        </section>
-
-        <!-- BOTTOM ROW: Events + Containers -->
+          <!-- BOTTOM ROW: Events + Containers -->
         <section id="section-events-containers" class="grid grid-cols-1 xl:grid-cols-5 gap-4">
 
-          <!-- Security Events (3/5) -->
-          <div class="xl:col-span-3 bg-cyber-surface border border-cyber-border rounded-2xl flex flex-col">
+          <!-- Décisions CrowdSec actives (3/5) -->
+          <div class="xl:col-span-3 bg-cyber-surface border border-cyber-border rounded-xl flex flex-col">
             <div class="flex items-center justify-between px-5 py-4 border-b border-cyber-border">
-              <h2 class="text-sm font-semibold text-slate-100">Security Events</h2>
-              <span id="events-count" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyber-surface-2 border border-cyber-border text-slate-400">— events</span>
+              <div>
+                <h2 class="text-sm font-semibold text-slate-100">Décisions CrowdSec actives</h2>
+                <p class="text-[11px] text-slate-500 mt-0.5">Snapshot local LAPI · décisions CAPI exclues</p>
+              </div>
+              <span id="events-count" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyber-surface-2 border border-cyber-border text-slate-400">— actives</span>
             </div>
             <div class="overflow-auto flex-1 max-h-[480px]">
-              <table class="w-full text-xs">
+              <table class="w-full text-[12px]">
                 <thead class="sticky top-0 z-10 bg-cyber-surface/95 backdrop-blur-sm">
-                  <tr class="text-[10px] uppercase tracking-widest text-slate-500 border-b border-cyber-border">
-                    <th class="px-5 py-3 text-left font-medium">Sévérité</th>
+                  <tr class="text-[11px] uppercase tracking-[0.10em] text-slate-500 border-b border-cyber-border">
+                    <th class="px-5 py-3 text-left font-medium">Action</th>
                     <th class="px-5 py-3 text-left font-medium hidden sm:table-cell">IP Source</th>
-                    <th class="px-5 py-3 text-left font-medium">Type</th>
+                    <th class="px-5 py-3 text-left font-medium">Scénario</th>
                     <th class="px-5 py-3 text-left font-medium hidden lg:table-cell">Message</th>
-                    <th class="px-5 py-3 text-left font-medium hidden xl:table-cell">Action</th>
+                    <th class="px-5 py-3 text-left font-medium hidden xl:table-cell">Observée à</th>
                   </tr>
                 </thead>
                 <tbody id="events-tbody" class="divide-y divide-cyber-border">
-                  <tr><td colspan="5" class="px-5 py-8 text-center text-slate-500 font-mono text-xs">Chargement des événements…</td></tr>
+                  <tr><td colspan="5" class="px-5 py-8 text-center text-slate-500 font-mono text-xs">Chargement des décisions…</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
 
           <!-- Containers (2/5) -->
-          <div class="xl:col-span-2 bg-cyber-surface border border-cyber-border rounded-2xl flex flex-col">
+          <div class="xl:col-span-2 bg-cyber-surface border border-cyber-border rounded-xl flex flex-col">
             <div class="flex items-center justify-between px-5 py-4 border-b border-cyber-border">
               <h2 class="text-sm font-semibold text-slate-100">Conteneurs</h2>
               <span id="containers-source" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyber-surface-2 border border-cyber-border text-slate-400">—</span>
@@ -356,41 +463,50 @@
 
         </section>
 
-        <!-- VUE DÉDIÉE : Security Events (onglet events) -->
-        <section id="section-events-full" class="hidden bg-cyber-surface border border-cyber-border rounded-2xl flex flex-col">
+        <!-- VUE DÉDIÉE : décisions CrowdSec actives -->
+        <section id="section-events-full" class="hidden bg-cyber-surface border border-cyber-border rounded-xl flex flex-col">
           <div class="flex items-center justify-between px-5 py-4 border-b border-cyber-border">
             <div>
-              <h2 class="text-sm font-semibold text-slate-100">Security Events</h2>
-              <p class="text-[11px] text-slate-500 mt-0.5">Snapshot CrowdSec live — WAF/SSH non instrumentés</p>
+              <h2 class="text-sm font-semibold text-slate-100">Décisions CrowdSec actives</h2>
+              <p class="text-[11px] text-slate-500 mt-0.5">Remédiations locales observées via la LAPI · CAPI exclue · WAF non instrumenté</p>
             </div>
-            <span id="events-count-full" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyber-surface-2 border border-cyber-border text-slate-400">— events</span>
+            <span id="events-count-full" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyber-surface-2 border border-cyber-border text-slate-400">— actives</span>
           </div>
-          <div class="overflow-auto flex-1 max-h-[70vh]">
-            <table class="w-full text-xs">
+          <div
+              id="events-cards-full"
+              class="sm:hidden divide-y divide-cyber-border"
+            >
+              <div class="px-5 py-8 text-center text-slate-500 text-xs">
+                Chargement des décisions…
+              </div>
+            </div>
+
+            <div class="hidden sm:block overflow-auto flex-1 max-h-[70vh]">
+            <table class="w-full text-[12px]">
               <thead class="sticky top-0 z-10 bg-cyber-surface/95 backdrop-blur-sm">
-                <tr class="text-[10px] uppercase tracking-widest text-slate-500 border-b border-cyber-border">
-                  <th class="px-5 py-3 text-left font-medium">Sévérité</th>
+                <tr class="text-[11px] uppercase tracking-[0.10em] text-slate-500 border-b border-cyber-border">
+                  <th class="px-5 py-3 text-left font-medium">Action</th>
                   <th class="px-5 py-3 text-left font-medium">IP Source</th>
                   <th class="px-5 py-3 text-left font-medium">Type</th>
                   <th class="px-5 py-3 text-left font-medium">Scénario</th>
                   <th class="px-5 py-3 text-left font-medium">Message</th>
-                  <th class="px-5 py-3 text-left font-medium">Action</th>
-                  <th class="px-5 py-3 text-left font-medium">Heure</th>
+                  <th class="px-5 py-3 text-left font-medium">Origine</th>
+                  <th class="px-5 py-3 text-left font-medium">Observée à</th>
                 </tr>
               </thead>
               <tbody id="events-tbody-full" class="divide-y divide-cyber-border">
-                <tr><td colspan="7" class="px-5 py-8 text-center text-slate-500 font-mono text-xs">Chargement des événements…</td></tr>
+                <tr><td colspan="7" class="px-5 py-8 text-center text-slate-500 font-mono text-xs">Chargement des décisions…</td></tr>
               </tbody>
             </table>
           </div>
         </section>
 
         <!-- VUE DÉDIÉE : Conteneurs (onglet containers) -->
-        <section id="section-containers-full" class="hidden bg-cyber-surface border border-cyber-border rounded-2xl flex flex-col">
+        <section id="section-containers-full" class="hidden bg-cyber-surface border border-cyber-border rounded-xl flex flex-col">
           <div class="flex items-center justify-between px-5 py-4 border-b border-cyber-border">
             <div>
               <h2 class="text-sm font-semibold text-slate-100">Conteneurs</h2>
-              <p class="text-[11px] text-slate-500 mt-0.5">Stack Docker — réseau backend isolé</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">Workloads observés via cAdvisor / Prometheus</p>
             </div>
             <span id="containers-source-full" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyber-surface-2 border border-cyber-border text-slate-400">—</span>
           </div>
@@ -410,7 +526,7 @@
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             <!-- Trivy -->
-            <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
+            <div class="bg-cyber-surface border border-cyber-border rounded-xl p-5 space-y-4">
               <div class="flex items-center gap-2.5">
                 <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
                   <i data-lucide="scan-search" class="w-4 h-4 text-cyan-400"></i>
@@ -427,7 +543,7 @@
             </div>
 
             <!-- ZAP -->
-            <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
+            <div class="bg-cyber-surface border border-cyber-border rounded-xl p-5 space-y-4">
               <div class="flex items-center gap-2.5">
                 <div class="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
                   <i data-lucide="bug" class="w-4 h-4 text-violet-400"></i>
@@ -446,7 +562,7 @@
           </div>
 
           <!-- Headers HTTP -->
-          <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-5 space-y-4">
+          <div class="bg-cyber-surface border border-cyber-border rounded-xl p-5 space-y-4">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
                 <i data-lucide="shield-check" class="w-4 h-4 text-green-400"></i>
@@ -470,70 +586,180 @@
         </section>
 
         <section id="section-profile" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div class="lg:col-span-1 bg-cyber-surface border border-cyber-border rounded-2xl p-6 flex flex-col items-center text-center">
-            <img src="/static/img/photo_cv.png" alt="Aymeric Rajaofetra" class="w-28 h-28 rounded-full object-cover border-2 border-cyan-500/40 mb-4">
-            <p class="font-display font-semibold text-lg text-slate-100">Aymeric Rajaofetra</p>
-            <p class="text-sm text-cyan-300 font-medium mb-4">DevSecOps / Cloud Security</p>
-            <div class="flex flex-wrap justify-center gap-1.5 mb-5">
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">MASTERE CYBERSECURITE &amp; RESEAUX</span>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-violet-500/10 text-violet-300 border border-violet-500/20">SECURITY+ EN PREPARATION</span>
+
+          <aside class="lg:col-span-1 bg-cyber-surface border border-cyber-border rounded-xl p-6">
+            <div class="flex flex-col items-center text-center">
+              <img
+                src="/static/img/photo_cv.png"
+                alt="Aymeric Rajaofetra"
+                class="w-24 h-24 rounded-full object-cover border border-cyber-border-strong mb-4"
+              >
+
+              <p class="font-semibold text-lg text-slate-100">
+                Aymeric Rajaofetra
+              </p>
+
+              <p class="text-sm text-slate-400 mt-1">
+                DevSecOps · Cloud Security
+              </p>
             </div>
-            <div class="w-full space-y-2 text-left text-xs text-slate-400 mb-5">
-              <div class="flex items-center gap-2"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-500 flex-shrink-0"></i>Villecresnes (94)</div>
-              <div class="flex items-center gap-2"><i data-lucide="mail" class="w-3.5 h-3.5 text-slate-500 flex-shrink-0"></i>aym-sec-engineer@proton.me</div>
-              <div class="flex items-center gap-2"><i data-lucide="github" class="w-3.5 h-3.5 text-slate-500 flex-shrink-0"></i>github.com/aym-sec-engineer</div>
-              <div class="flex items-center gap-2"><i data-lucide="linkedin" class="w-3.5 h-3.5 text-slate-500 flex-shrink-0"></i>linkedin.com/in/aymrajao</div>
+
+            <div class="mt-6 pt-5 border-t border-cyber-border space-y-3">
+              <div>
+                <p class="text-[10px] uppercase tracking-[0.10em] text-slate-600">
+                  Formation
+                </p>
+                <p class="text-[12px] text-slate-300 mt-1">
+                  Mastère Cybersécurité &amp; Réseaux
+                </p>
+              </div>
+
+              <div>
+                <p class="text-[10px] uppercase tracking-[0.10em] text-slate-600">
+                  Certification
+                </p>
+                <p class="text-[12px] text-slate-300 mt-1">
+                  Security+ · préparation
+                </p>
+              </div>
             </div>
-            <a href="/static/docs/cv-aymeric-rajaofetra.pdf" download class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors">
+
+            <div class="mt-5 pt-5 border-t border-cyber-border space-y-3 text-[12px] text-slate-400">
+              <div class="flex items-center gap-2">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-600 flex-shrink-0"></i>
+                <span>Villecresnes (94)</span>
+              </div>
+
+              <div class="flex items-center gap-2 min-w-0">
+                <i data-lucide="mail" class="w-3.5 h-3.5 text-slate-600 flex-shrink-0"></i>
+                <span class="truncate">aym-sec-engineer@proton.me</span>
+              </div>
+
+              <div class="flex items-center gap-2 min-w-0">
+                <i data-lucide="github" class="w-3.5 h-3.5 text-slate-600 flex-shrink-0"></i>
+                <span class="truncate">github.com/aym-sec-engineer</span>
+              </div>
+
+              <div class="flex items-center gap-2 min-w-0">
+                <i data-lucide="linkedin" class="w-3.5 h-3.5 text-slate-600 flex-shrink-0"></i>
+                <span class="truncate">linkedin.com/in/aymrajao</span>
+              </div>
+            </div>
+
+            <a
+              href="/static/docs/cv-aymeric-rajaofetra.pdf"
+              download
+              class="mt-6 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-200 bg-cyber-surface-2 border border-cyber-border hover:border-cyber-border-strong transition-colors"
+            >
               <i data-lucide="download" class="w-4 h-4"></i>
-              Telecharger le CV (PDF)
+              Télécharger le CV
             </a>
-          </div>
+          </aside>
+
           <div class="lg:col-span-2 space-y-4">
-            <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-6">
-              <p class="font-display font-semibold text-sm text-slate-100 mb-4">Competences techniques</p>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+
+            <article class="bg-cyber-surface border border-cyber-border rounded-xl p-6">
+              <p class="text-sm font-semibold text-slate-100 mb-5">
+                Compétences techniques
+              </p>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5 text-[12px]">
+
                 <div>
-                  <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Securite &amp; DevSecOps</p>
-                  <p class="text-slate-300 leading-relaxed">Durcissement Linux/SSH - Trivy (supply chain) - ModSecurity / OWASP CRS - CrowdSec / nftables - DAST (OWASP ZAP) - Gestion des secrets - TLS / Let's Encrypt - Segmentation reseau Docker - Headers de securite HTTP</p>
+                  <p class="text-[10px] uppercase tracking-[0.10em] text-slate-600 mb-2">
+                    Sécurité &amp; DevSecOps
+                  </p>
+                  <p class="text-slate-400 leading-relaxed">
+                    Durcissement Linux/SSH · Trivy · ModSecurity / OWASP CRS · CrowdSec / nftables · OWASP ZAP · gestion des secrets · TLS / Let's Encrypt · segmentation réseau Docker · headers HTTP
+                  </p>
                 </div>
+
                 <div>
-                  <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">CI/CD &amp; IaC</p>
-                  <p class="text-slate-300 leading-relaxed">GitHub Actions - Docker / Docker Compose - Ansible - Traefik</p>
+                  <p class="text-[10px] uppercase tracking-[0.10em] text-slate-600 mb-2">
+                    CI/CD &amp; Infrastructure
+                  </p>
+                  <p class="text-slate-400 leading-relaxed">
+                    GitHub Actions · Docker · Docker Compose · Traefik
+                  </p>
                 </div>
+
                 <div>
-                  <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Observabilite</p>
-                  <p class="text-slate-300 leading-relaxed">Prometheus (node-exporter, cAdvisor) - Grafana</p>
+                  <p class="text-[10px] uppercase tracking-[0.10em] text-slate-600 mb-2">
+                    Observabilité
+                  </p>
+                  <p class="text-slate-400 leading-relaxed">
+                    Prometheus · node-exporter · cAdvisor · Grafana
+                  </p>
                 </div>
+
                 <div>
-                  <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Automatisation &amp; Dev</p>
-                  <p class="text-slate-300 leading-relaxed">HubSpot, Make, Zapier, n8n - API REST - SQL - Python - Flask</p>
+                  <p class="text-[10px] uppercase tracking-[0.10em] text-slate-600 mb-2">
+                    Automatisation &amp; développement
+                  </p>
+                  <p class="text-slate-400 leading-relaxed">
+                    HubSpot · Make · Zapier · n8n · API REST · SQL · Python · Flask
+                  </p>
                 </div>
+
               </div>
-            </div>
-            <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-6">
-              <div class="flex items-start justify-between mb-2">
-                <p class="font-display font-semibold text-sm text-slate-100">Produit Tech &amp; Projets Digitaux</p>
-                <span class="text-[10px] font-mono text-slate-500 flex-shrink-0">Avr. 2025 - Avr. 2026</span>
+            </article>
+
+            <article class="bg-cyber-surface border border-cyber-border rounded-xl p-6">
+              <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
+                <div>
+                  <p class="text-sm font-semibold text-slate-100">
+                    Produit Tech &amp; Projets Digitaux
+                  </p>
+                  <p class="text-[12px] text-slate-500 mt-1">
+                    La Casa Coliving · Alternance
+                  </p>
+                </div>
+
+                <span class="text-[11px] font-mono text-slate-600 flex-shrink-0">
+                  Avr. 2025 – Avr. 2026
+                </span>
               </div>
-              <p class="text-xs text-cyan-300 mb-3">La Casa Coliving - Alternance</p>
-              <p class="text-xs text-slate-400 leading-relaxed">Pilotage de plus de 200 workflows HubSpot et 70 scenarios Zapier, migration d'un CRM de plus de 3 000 enregistrements, conception de "Casa Finder" (matching geographique via API), integration d'une IA support client, automatisations Slack et reporting analytique.</p>
-            </div>
-            <div class="bg-cyber-surface border border-cyber-border rounded-2xl p-6">
-              <div class="flex items-start justify-between mb-2">
-                <p class="font-display font-semibold text-sm text-slate-100">Marley - Infrastructure DevSecOps auto-hebergee</p>
-                <span class="text-[10px] font-mono text-slate-500 flex-shrink-0">Juin 2026 - en cours</span>
+
+              <p class="text-[12px] text-slate-400 leading-relaxed">
+                Automatisation métier, migration CRM, workflows HubSpot et Zapier, Casa Finder, intégrations API, support client assisté par IA et reporting.
+              </p>
+            </article>
+
+            <article class="bg-cyber-surface border border-cyber-border rounded-xl p-6">
+              <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
+                <div>
+                  <p class="text-sm font-semibold text-slate-100">
+                    Marley · Infrastructure DevSecOps auto-hébergée
+                  </p>
+                  <p class="text-[12px] text-slate-500 mt-1">
+                    Projet portfolio · environnement réel sur VPS
+                  </p>
+                </div>
+
+                <span class="text-[11px] font-mono text-slate-600 flex-shrink-0">
+                  Juin 2026 – en cours
+                </span>
               </div>
-              <p class="text-xs text-slate-400 leading-relaxed mb-3">Ce dashboard : Traefik v3 -> ModSecurity WAF -> Flask sur reseaux Docker segmentes, CI/CD GitHub Actions avec Trivy bloquant, CrowdSec + nftables, observabilite Prometheus/Grafana, DAST OWASP ZAP avec résultats de scan historisés.</p>
-              <a href="https://github.com/aym-sec-engineer/marley-app" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-xs text-cyan-300 hover:text-cyan-200">
+
+              <p class="text-[12px] text-slate-400 leading-relaxed mb-4">
+                Traefik v3 · ModSecurity / OWASP CRS · Flask · Docker Compose · GitHub Actions · Trivy · CrowdSec / nftables · Prometheus / Grafana · OWASP ZAP.
+              </p>
+
+              <a
+                href="https://github.com/aym-sec-engineer/marley-app"
+                target="_blank"
+                rel="noopener"
+                class="inline-flex items-center gap-2 text-[12px] text-slate-300 hover:text-slate-100 transition-colors"
+              >
                 <i data-lucide="github" class="w-3.5 h-3.5"></i>
                 github.com/aym-sec-engineer/marley-app
               </a>
-            </div>
+            </article>
+
           </div>
         </section>
 
-        <section id="tab-placeholder" class="hidden bg-cyber-surface border border-cyber-border rounded-2xl p-12 text-center">
+        <section id="tab-placeholder" class="hidden bg-cyber-surface border border-cyber-border rounded-xl p-12 text-center">
           <i data-lucide="construction" class="w-10 h-10 text-slate-600 mx-auto mb-4"></i>
           <p class="text-sm font-semibold text-slate-300 mb-1">Section en construction</p>
           <p class="text-xs text-slate-500">Cette vue sera enrichie dans une prochaine itération du dashboard.</p>

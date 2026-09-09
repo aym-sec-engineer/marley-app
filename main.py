@@ -6,10 +6,10 @@
 
 Ce serveur expose les métriques de sécurité de l'infrastructure Marley :
   - État du pare-feu (nftables) et port SSH durci
-  - Décisions actives CrowdSec (IPs bannies) via cscli
+  - Décisions actives CrowdSec locales via la LAPI
   - Flux d'événements de sécurité (CrowdSec + WAF ModSecurity + SSH)
   - Métriques CPU/RAM des conteneurs Docker de la stack
-  - Série temporelle des tentatives bloquées (pour Chart.js)
+  - Série temporelle d’activité de sécurité (pour Chart.js)
 
 Stratégie de données : chaque collecteur tente d'abord une lecture
 RÉELLE (CrowdSec LAPI, psutil, Prometheus/cAdvisor). Les collecteurs
@@ -106,7 +106,7 @@ def get_security_headers() -> dict:
         "Content-Security-Policy": (
             "default-src 'self'; "
             "script-src 'self'; "
-            "style-src 'self' 'unsafe-inline' "
+            "style-src 'self' "
             "https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self'; "
@@ -125,7 +125,7 @@ def apply_security_headers(response):
 
     La CSP n'autorise l'exécution JavaScript que depuis l'origine
     applicative : les dépendances frontend et le JavaScript Marley sont
-    servis localement. Le CSS conserve temporairement 'unsafe-inline'
+    servis localement. Le CSS applicatif est servi localement sans autorisation de styles inline
     car certaines barres de métriques utilisent encore des largeurs
     calculées dynamiquement ; ce compromis est explicite et limité au
     style-src."""
@@ -303,8 +303,7 @@ def get_security_events(
         ).upper()
 
         events.append({
-            "timestamp": observed_at,
-            "severity": "high",
+            "observed_at": observed_at,
             "source_ip": decision.get("value", "—"),
             "event_type": "CrowdSec Active Decision",
             "scenario": decision.get(
@@ -312,7 +311,7 @@ def get_security_events(
                 "unknown",
             ),
             "message": (
-                "Décision active observée via la LAPI CrowdSec"
+                "Décision locale active observée via la LAPI CrowdSec"
             ),
             "action": decision_type,
             "origin": decision.get(
@@ -518,7 +517,7 @@ def get_container_metrics() -> tuple[list[dict], bool]:
                 "name": name,
                 "role": role_map.get(name, "Service"),
                 "image": image,
-                "status": "running",
+                "observation_status": "observed",
                 "cpu_percent": round(cpu_cores * 100, 2),
                 "mem_percent": mem_percent,
                 "mem_usage_mb": round(
@@ -551,7 +550,8 @@ def get_configured_networks() -> list[dict]:
     return [
         {
             "name": "web",
-            "driver": "external",
+            "driver": None,
+            "management": "external",
             "internal": False,
             "subnet": "dynamic",
             "containers": [
@@ -564,6 +564,7 @@ def get_configured_networks() -> list[dict]:
         {
             "name": "backend",
             "driver": "bridge",
+            "management": "compose",
             "internal": True,
             "subnet": "dynamic",
             "containers": [
@@ -575,6 +576,7 @@ def get_configured_networks() -> list[dict]:
         {
             "name": "monitoring",
             "driver": "bridge",
+            "management": "compose",
             "internal": True,
             "subnet": "dynamic",
             "containers": [
@@ -590,7 +592,7 @@ def get_configured_networks() -> list[dict]:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# COLLECTEURS — Série temporelle des attaques (Chart.js)
+# COLLECTEURS — Activité de sécurité temporelle (Chart.js)
 # ═══════════════════════════════════════════════════════════════════
 
 PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://prometheus:9090")
@@ -701,7 +703,7 @@ def get_crowdsec_metrics() -> dict:
     }
 
 
-def get_attacks_timeline(hours: int = 24) -> dict:
+def get_security_activity_timeline(hours: int = 24) -> dict:
     """Série temporelle horaire de télémétrie de sécurité affichée
     par le dashboard.
 
@@ -747,7 +749,7 @@ def get_attacks_timeline(hours: int = 24) -> dict:
                 else:
                     series[-len(parsed):] = parsed
         except (requests.RequestException, ValueError, KeyError) as exc:
-            app.logger.warning("get_attacks_timeline(%s): Prometheus injoignable (%s)", query, exc)
+            app.logger.warning("get_security_activity_timeline(%s): Prometheus injoignable (%s)", query, exc)
         return series, source
 
     # Logs analysés par les parsers CrowdSec (compteur cumulatif, tout
@@ -762,24 +764,29 @@ def get_attacks_timeline(hours: int = 24) -> dict:
         'sum(cs_active_decisions{origin!="CAPI"})'
     )
 
-    waf_series: list[int] = [0] * len(labels)
-
     return {
         "labels": labels,
         "datasets": {
             "logs_analyzed": logs_series,
             "active_decisions": decisions_series,
-            "waf": waf_series,
+            "waf": None,
         },
         "totals": {
             "logs_analyzed": sum(logs_series),
-            "active_decisions": decisions_series[-1] if decisions_series else 0,
-            "waf": sum(waf_series),
+            "active_decisions": (
+                decisions_series[-1]
+                if decisions_series
+                else None
+            ),
+            "waf": None,
         },
         "meta": {
             "logs_analyzed_source": logs_source,
             "active_decisions_source": decisions_source,
             "waf_source": "not_instrumented",
+            "active_decisions_semantics": (
+                "prometheus_historical_gauge"
+            ),
         },
     }
 
@@ -1038,7 +1045,7 @@ def api_timeline():
     """Série temporelle de télémétrie sécurité pour Chart.js."""
 
     hours = request.args.get("hours", default=24, type=int)
-    return jsonify(get_attacks_timeline(hours=hours))
+    return jsonify(get_security_activity_timeline(hours=hours))
 
 
 @app.route("/api/v1/settings")
