@@ -30,22 +30,22 @@ jobs:
 
         run: |
 
-          docker run --rm \\
+          docker run --rm \
 
-            -v "$GITHUB_WORKSPACE:/src:ro" \\
+            -v "$GITHUB_WORKSPACE:/src:ro" \
 
-            -w /src \\
+            -w /src \
 
-            semgrep/semgrep:1.175.1@sha256:51c9f53a4fce0d55e9abd08d7b96968654248a4b1122e77f20e0a49c0072446c \\
+            semgrep/semgrep:1.175.1@sha256:51c9f53a4fce0d55e9abd08d7b96968654248a4b1122e77f20e0a49c0072446c \
 
-            semgrep scan \\
+            semgrep scan \
 
-              --config auto \\
-
-
+              --config auto \
 
 
-              --error \\
+
+
+              --error \
 
               .
 
@@ -90,7 +90,7 @@ jobs:
           retention-days: 30
 
       - name: Trivy scan — rapport SARIF (visible dans l'onglet Security GitHub)
-        if: always()
+        if: always() && steps.meta.outputs.tag != ''
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: cyberaym/marley-test:${{ steps.meta.outputs.tag }}
@@ -99,7 +99,7 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
 
       - name: Upload SARIF
-        if: always()
+        if: always() && steps.meta.outputs.tag != ''
         uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
         with:
           sarif_file: trivy-results.sarif
